@@ -23,6 +23,7 @@ jobs:
     - name: Download and install Boost
       # You may pin to the exact commit or the version.
       uses: MarkusJx/install-boost@36b7c6e8423a0c29b091450ffe448457986b5eca
+      id: install-boost
       with:
         boost_version: 1.71.0
 
