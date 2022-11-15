@@ -25,6 +25,15 @@ jobs:
       # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
       run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
 
+    - name: Download and install Boost
+      # You may pin to the exact commit or the version.
+      uses: MarkusJx/install-boost@36b7c6e8423a0c29b091450ffe448457986b5eca
+      with:
+        # The boost version to install, e.g. "1.73.0"
+        boost_version: 1.71.0
+        # The architecture the binaries were built for
+        arch: x64
+
     - name: Build
       # Build your program with the given configuration
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
