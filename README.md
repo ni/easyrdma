@@ -3,7 +3,7 @@ Copyright (c) 2022 National Instruments
 SPDX-License-Identifier: MIT
 -->
 
-# EasyRDMA
+# easyRDMA
 
 An easy-to-use, cross-platform RDMA library.
 
