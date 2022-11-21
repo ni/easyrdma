@@ -18,8 +18,8 @@ Features include:
 - Boost (tested with 1.71.0)
   - Found via standard CMake find_package() call
  - NetworkDirect (Windows build)
-  - Download: "nuget.exe install NetworkDirect -Version 2.0.1"
-  - CMake expected to be configured with NetDirect_HEADER_DIR / NetDirect_LIBRARYDIR variables pointing to the NetworkDirect install location
+   - Download: "nuget.exe install NetworkDirect -Version 2.0.1"
+   - CMake expected to be configured with NetDirect_HEADER_DIR / NetDirect_LIBRARYDIR variables pointing to the NetworkDirect install location
 - libibverbs/rdma_cm (Linux build)
   - Both part of rdma-core package
   - CMake expected to be configured with VERBS_HEADER_DIR / VERBS_LIB_DIR variables
