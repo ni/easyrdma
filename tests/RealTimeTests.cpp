@@ -14,6 +14,7 @@
 #include "utility/RdmaTestBase.h"
 #include "common/ThreadUtility.h"
 #include <fstream>
+#include <thread>
 
 #ifdef __linux__
     #include <sys/mman.h>
