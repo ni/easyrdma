@@ -10,7 +10,7 @@
     - CMake expected to be configured with `NetDirect_HEADER_DIR` / `NetDirect_LIBRARYDIR` variables pointing to the NetworkDirect install location
 - libibverbs/rdma_cm (Linux build)
     - Both part of rdma-core package
-    - CMake expected to be configured with `VERBS_HEADER_DIR` / `VERBS_LIB_DIR` variables
+    - CMake can be configured with `VERBS_HEADER_DIR` / `VERBS_LIB_DIR` variables, if not available in default system search directories
 - googletest
     - Retrieved automatically via CMake step
 
