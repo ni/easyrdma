@@ -21,6 +21,12 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: Install boost
+        uses: MarkusJx/install-boost@v2.4.1
+        id: install-boost
+        with:
+          boost_version: 1.73.0
+          
       - name: Setup NuGet
         if: ${{ matrix.os=='windows-latest' }}
         uses: NuGet/setup-nuget@v1.1.1
@@ -31,11 +37,9 @@ jobs:
         if: ${{ matrix.os=='windows-latest' }}
         run: mkdir -p objects/nuget && cd objects/nuget && nuget install NetworkDirect -Version 2.0.1
       
-      - name: Install boost
-        uses: MarkusJx/install-boost@v2.4.1
-        id: install-boost
-        with:
-          boost_version: 1.73.0
+      - name: Configure rdma-core
+        if: ${{ matrix.os=='ubuntu-latest' }}
+        run: mkdir -p objects/rdma_core && cp -Rf /usr/include/* objects/rdma_core/includes && mkdir -p objects/rdma_core/includes/rdma && cp -Rf objects/rdma_core/lib/modules/*/build/include/uapi/rdma/* objects/rdma_core/includes/rdma && mkdir -p objects/rdma_core/lib && cp -Rf objects/rdma_core/usr/lib/* objects/rdma_core/lib
 
       - name: Configure CMake for Windows
         if: ${{ matrix.os=='windows-latest' }}      
@@ -47,10 +51,12 @@ jobs:
 
       - name: Configure CMake for Linux
         if: ${{ matrix.os=='ubuntu-latest' }}      
-        run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DBoost_LIBRARY_DIRS=${{env.BOOST_ROOT}}/lib
+        run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DBoost_LIBRARY_DIRS=${{env.BOOST_ROOT}}/lib -DVERBS_HEADER_DIR=${{env.VERBS_HEADER}} -DVERBS_LIB_DIR=${{env.VERBS_LIB}}        
         env:
           BOOST_ROOT: ${{steps.install-boost.outputs.BOOST_ROOT}}
-          
+          VERBS_HEADER: ${{github.workspace}}\objects\rdma_core/includes
+          VERBS_LIB: ${{github.workspace}}\objects\rdma_core/lib
+
       - name: Build
         # Build your program with the given configuration
         run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
