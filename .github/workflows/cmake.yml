@@ -19,7 +19,15 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-    
+              
+    - name: Setup NuGet
+      uses: NuGet/setup-nuget@v1.1.1
+      with:
+        nuget-version: '5.x'
+        
+    - name: Install NetworkDirect
+      run: mkdir -p objects/nuget && cd objects/nuget && nuget install NetworkDirect -Version 2.0.1
+      
     - name: Install boost
       uses: MarkusJx/install-boost@v2.4.1
       id: install-boost
