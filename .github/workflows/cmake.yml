@@ -36,23 +36,23 @@ jobs:
           platform_version: ${{ matrix.cfg.platform_version }} 
           
       - name: Setup NuGet (Windows)
-        if: ${{ matrix.cfg.os == 'windows' }}
+        if: ${{ matrix.cfg.os == 'windows'.* }}
         uses: NuGet/setup-nuget@v1.1.1
         with:
           nuget-version: '5.x'
         
       - name: Install NetworkDirect (Windows)
-        if: ${{ matrix.cfg.os == 'windows' }}
+        if: ${{ matrix.cfg.os == 'windows'.* }}
         # Please update CONTIRBUTING.md if the version is changed
         run: mkdir -p objects/nuget && cd objects/nuget && nuget install NetworkDirect -Version 2.0.1
       
       - name: Install rdma-core (Linux)
-        if: ${{ matrix.cfg.os == 'ubuntu' }}
+        if: ${{ matrix.cfg.os == 'ubuntu'.* }}
         run: |
           sudo apt install -y rdma-core librdmacm-dev libibverbs-dev
 
       - name: Configure CMake (Windows)
-        if: ${{ matrix.cfg.os == 'windows' }}
+        if: ${{ matrix.cfg.os == 'windows'.* }}
         run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DBoost_LIBRARY_DIRS=${{env.BOOST_ROOT}}/lib -DNetDirect_HEADER_DIR=${{env.ND_INCLUDE}} -DNetDirect_LIBRARYDIR=${{env.ND_LIBRARY}}        
         env:
           BOOST_ROOT: ${{steps.install-boost.outputs.BOOST_ROOT}}
@@ -60,7 +60,7 @@ jobs:
           ND_LIBRARY: ${{github.workspace}}/objects/nuget/NetworkDirect.2.0.1/lib/x64
 
       - name: Configure CMake (Linux)
-        if: ${{ matrix.cfg.os == 'ubuntu' }} 
+        if: ${{ matrix.cfg.os == 'ubuntu'.* }}
         run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DBoost_LIBRARY_DIRS=${{env.BOOST_ROOT}}/lib -DVERBS_HEADER_DIR=${{env.VERBS_HEADER}} -DVERBS_LIB_DIR=${{env.VERBS_LIB}}        
         env:
           BOOST_ROOT: ${{steps.install-boost.outputs.BOOST_ROOT}}
@@ -71,10 +71,10 @@ jobs:
         run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
         
       - name: Run UnitTests (Linux)
-        if: ${{ matrix.cfg.os == 'ubuntu' }}
+        if: ${{ matrix.cfg.os == 'ubuntu'.* }}
         run: ${{github.workspace}}/build/unit_tests/easyrdma_unit_tests
         
       - name: Run UnitTests (Windows)
-        if: ${{ matrix.cfg.os == 'windows' }}
+        if: ${{ matrix.cfg.os == 'windows'.* }}
         run: ${{github.workspace}}\build\unit_tests\${{env.BUILD_TYPE}}\easyrdma_unit_tests.exe      
         
