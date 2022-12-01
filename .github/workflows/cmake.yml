@@ -74,5 +74,5 @@ jobs:
         
       - name: Run UnitTests        
         if: ${{ matrix.os == 'windows-latest' }}
-        run: ${{github.workspace}}\build\unit_tests\easyrdma_unit_tests.exe      
+        run: start ${{github.workspace}}\build\unit_tests\easyrdma_unit_tests.exe      
         
