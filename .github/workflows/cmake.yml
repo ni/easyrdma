@@ -67,3 +67,12 @@ jobs:
       - name: Build
         # Build your program with the given configuration
         run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+        
+      - name: Run UnitTests        
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: ${{github.workspace}}/build//unit_tests/easyrdma_unit_tests
+        
+      - name: Run UnitTests        
+        if: ${{ matrix.os == 'windows-latest' }}
+        run: ${{github.workspace}}/build//unit_tests/easyrdma_unit_tests.exe      
+        
