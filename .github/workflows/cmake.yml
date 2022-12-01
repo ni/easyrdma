@@ -18,7 +18,9 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os:
+          - ubuntu-latest
+          - windows-latest
 
     steps:
       - uses: actions/checkout@v3
@@ -48,7 +50,7 @@ jobs:
           mkdir -p objects/rdma_core/includes/rdma
           cp -Rf /usr/include/rdma objects/rdma_core/includes/rdma
           mkdir -p objects/rdma_core/includes/infiniband
-          cp -Rf /usr/include/rdma objects/rdma_core/includes/infiniband
+          cp -Rf /usr/include/infiniband objects/rdma_core/includes/infiniband
           cp -Rf /lib/modules/*/build/include/uapi/rdma/* objects/rdma_core/includes/rdma
           mkdir -p objects/rdma_core/lib/
           cp -Rf /usr/lib/*/libibverbs.so objects/rdma_core/lib
@@ -56,11 +58,11 @@ jobs:
 
       - name: Configure CMake for Windows
         if: ${{ matrix.os == 'windows-latest' }}      
-        run: cmake -B ${{github.workspace}}\build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DBoost_LIBRARY_DIRS=${{env.BOOST_ROOT}}\lib -DNetDirect_HEADER_DIR=${{env.ND_INCLUDE}} -DNetDirect_LIBRARYDIR=${{env.ND_LIBRARY}}        
+        run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DBoost_LIBRARY_DIRS=${{env.BOOST_ROOT}}/lib -DNetDirect_HEADER_DIR=${{env.ND_INCLUDE}} -DNetDirect_LIBRARYDIR=${{env.ND_LIBRARY}}        
         env:
           BOOST_ROOT: ${{steps.install-boost.outputs.BOOST_ROOT}}
-          ND_INCLUDE: ${{github.workspace}}\objects\nuget\NetworkDirect.2.0.1\include
-          ND_LIBRARY: ${{github.workspace}}\objects\nuget\NetworkDirect.2.0.1\lib/x64
+          ND_INCLUDE: ${{github.workspace}}/objects/nuget/NetworkDirect.2.0.1/include
+          ND_LIBRARY: ${{github.workspace}}/objects/nuget/NetworkDirect.2.0.1/lib/x64
 
       - name: Configure CMake for Linux
         if: ${{ matrix.os == 'ubuntu-latest' }}      
