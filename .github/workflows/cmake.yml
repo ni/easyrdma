@@ -39,7 +39,7 @@ jobs:
       
       - name: Configure rdma-core
         if: ${{ matrix.os=='ubuntu-latest' }}
-        run: apt install -y rdma-core librdmacm-dev libibverbs-dev && mkdir -p objects/rdma_core/includes/rdma  && cp -Rf /usr/include/rdma objects/rdma_core/includes/rdma && mkdir -p objects/rdma_core/includes/infiniband && cp -Rf /usr/include/rdma objects/rdma_core/includes/infiniband && cp -Rf /lib/modules/*/build/include/uapi/rdma/* objects/rdma_core/includes/rdma && mkdir -p objects/rdma_core/lib/ && cp -Rf /usr/lib/libibverbs.so objects/rdma_core/lib && cp -Rf /usr/lib/librdmacm.so objects/rdma_core/lib
+        run: sudo apt install -y rdma-core librdmacm-dev libibverbs-dev && mkdir -p objects/rdma_core/includes/rdma  && cp -Rf /usr/include/rdma objects/rdma_core/includes/rdma && mkdir -p objects/rdma_core/includes/infiniband && cp -Rf /usr/include/rdma objects/rdma_core/includes/infiniband && cp -Rf /lib/modules/*/build/include/uapi/rdma/* objects/rdma_core/includes/rdma && mkdir -p objects/rdma_core/lib/ && cp -Rf /usr/lib/libibverbs.so objects/rdma_core/lib && cp -Rf /usr/lib/librdmacm.so objects/rdma_core/lib
 
       - name: Configure CMake for Windows
         if: ${{ matrix.os=='windows-latest' }}      
