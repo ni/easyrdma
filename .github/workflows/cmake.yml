@@ -61,7 +61,7 @@ jobs:
         run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DBoost_LIBRARY_DIRS=${{env.BOOST_ROOT}}/lib -DVERBS_HEADER_DIR=${{env.VERBS_HEADER}} -DVERBS_LIB_DIR=${{env.VERBS_LIB}}        
         env:
           BOOST_ROOT: ${{steps.install-boost.outputs.BOOST_ROOT}}
-          VERBS_HEADER: "/usr/include/rdma /usr/include/infiniband"
+          VERBS_HEADER: \"/usr/include/rdma /usr/include/infiniband\"
           VERBS_LIB: /usr/lib
 
       - name: Build
