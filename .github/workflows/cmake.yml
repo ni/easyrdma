@@ -30,7 +30,7 @@ jobs:
         id: install-boost
         with:
           # Please update CONTIRBUTING.md if the version is changed
-          boost_version: 1.71.0
+          boost_version: 1.73.0
           
       - name: Setup NuGet
         if: ${{ matrix.os == 'windows-latest' }}
