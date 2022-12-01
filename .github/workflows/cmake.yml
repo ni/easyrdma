@@ -14,13 +14,15 @@ env:
 
 jobs:
   build:
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.cfg.os }}
 
     strategy:
       matrix:
-        os:
-          - ubuntu-latest
-          - windows-latest
+        cfg: 
+          - { os: ubuntu-20.04, platform_version: 20.04 }
+          - { os: ubuntu-22.04, platform_version: 22.04 }
+          - { os: windows-2019, platform_version: 2019 }
+          - { os: windows-2022, platform_version: 2022 }
 
     steps:
       - uses: actions/checkout@v3
@@ -31,33 +33,34 @@ jobs:
         with:
           # Please update CONTIRBUTING.md if the version is changed
           boost_version: 1.73.0
+          platform_version: ${{ matrix.cfg.platform_version }} 
           
-      - name: Setup NuGet
-        if: ${{ matrix.os == 'windows-latest' }}
+      - name: Setup NuGet (Windows)
+        if: ${{ 'windows' in matrix.cfg.os }}
         uses: NuGet/setup-nuget@v1.1.1
         with:
           nuget-version: '5.x'
         
-      - name: Install NetworkDirect
-        if: ${{ matrix.os == 'windows-latest' }}
+      - name: Install NetworkDirect (Windows)
+        if: ${{ 'windows' in matrix.cfg.os }}
         # Please update CONTIRBUTING.md if the version is changed
         run: mkdir -p objects/nuget && cd objects/nuget && nuget install NetworkDirect -Version 2.0.1
       
-      - name: Install rdma-core
-        if: ${{ matrix.os == 'ubuntu-latest' }}
+      - name: Install rdma-core (Linux)
+        if: ${{ 'ubuntu' in matrix.cfg.os }}
         run: |
           sudo apt install -y rdma-core librdmacm-dev libibverbs-dev
 
-      - name: Configure CMake for Windows
-        if: ${{ matrix.os == 'windows-latest' }}      
+      - name: Configure CMake (Windows)
+        if: ${{ 'windows' in matrix.cfg.os }}  
         run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DBoost_LIBRARY_DIRS=${{env.BOOST_ROOT}}/lib -DNetDirect_HEADER_DIR=${{env.ND_INCLUDE}} -DNetDirect_LIBRARYDIR=${{env.ND_LIBRARY}}        
         env:
           BOOST_ROOT: ${{steps.install-boost.outputs.BOOST_ROOT}}
           ND_INCLUDE: ${{github.workspace}}/objects/nuget/NetworkDirect.2.0.1/include
           ND_LIBRARY: ${{github.workspace}}/objects/nuget/NetworkDirect.2.0.1/lib/x64
 
-      - name: Configure CMake for Linux
-        if: ${{ matrix.os == 'ubuntu-latest' }}      
+      - name: Configure CMake (Linux)
+        if: ${{ 'ubuntu' in matrix.cfg.os }}   
         run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DBoost_LIBRARY_DIRS=${{env.BOOST_ROOT}}/lib -DVERBS_HEADER_DIR=${{env.VERBS_HEADER}} -DVERBS_LIB_DIR=${{env.VERBS_LIB}}        
         env:
           BOOST_ROOT: ${{steps.install-boost.outputs.BOOST_ROOT}}
@@ -67,11 +70,11 @@ jobs:
       - name: Build
         run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
         
-      - name: Run UnitTests        
-        if: ${{ matrix.os == 'ubuntu-latest' }}
+      - name: Run UnitTests (Linux)
+        if: ${{ 'ubuntu' in matrix.cfg.os }}
         run: ${{github.workspace}}/build/unit_tests/easyrdma_unit_tests
         
-      - name: Run UnitTests        
-        if: ${{ matrix.os == 'windows-latest' }}
+      - name: Run UnitTests (Windows)
+        if: ${{ 'windows' in matrix.cfg.os }}
         run: ${{github.workspace}}\build\unit_tests\${{env.BUILD_TYPE}}\easyrdma_unit_tests.exe      
         
