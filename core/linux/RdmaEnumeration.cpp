@@ -7,7 +7,7 @@
 #include <net/if.h>
 #include <boost/filesystem.hpp>
 #include <boost/range.hpp>
-#include <sstream>
+#include <fstream>
 
 struct InterfaceInfo {
     uint32_t ifIndex = -1;
