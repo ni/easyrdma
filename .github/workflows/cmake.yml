@@ -19,8 +19,10 @@ jobs:
     strategy:
       matrix:
         cfg: 
-          - { os: ubuntu-20.04, platform_version: 20.04 }
-          - { os: windows-2019, platform_version: 2019 }
+          - { os: ubuntu-20.04, platform_version: 20.04, boost_version: 1.73.0 }
+          - { os: ubuntu-22.04, platform_version: 22.04, boost_version: 1.79.0 }
+          - { os: windows-2019, platform_version: 2019,  boost_version: 1.73.0 }
+          - { os: windows-2022, platform_version: 2022,  boost_version: 1.79.0, toolset: msvc }
 
     steps:
       - uses: actions/checkout@v3
@@ -30,8 +32,9 @@ jobs:
         id:   install-boost
         with:
           # Please update CONTIRBUTING.md if the version is changed
-          boost_version: 1.73.0
-          platform_version: ${{ matrix.cfg.platform_version }} 
+          boost_version: ${{ matrix.cfg.boost_version }}
+          platform_version: ${{ matrix.cfg.platform_version }}
+          toolset: ${{ matrix.cfg.toolset }}
           
       - name: Setup NuGet (Windows)
         if:   contains(matrix.cfg.os, 'windows')
