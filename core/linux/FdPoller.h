@@ -40,7 +40,7 @@ class FdPoller {
             return pollingFds[0].revents != 0;
         }
         void Cancel() {
-            write(pipeFds[1], " ", 1);
+            (void)! write(pipeFds[1], " ", 1);
         }
     private:
         int pipeFds[2];
