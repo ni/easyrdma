@@ -74,7 +74,7 @@ TEST(Poll, PollSucceeds) {
     };
     auto start = std::chrono::steady_clock::now();
     auto waiter = std::async(std::launch::async, Poll, 500);
-    write(pipeFds[1], " ", 1);
+    (void)! write(pipeFds[1], " ", 1);
     RDMA_ASSERT_NO_THROW( EXPECT_TRUE(waiter.get()) );
     ASSERT_LT(std::chrono::steady_clock::now()-start, std::chrono::milliseconds(100));
     close(pipeFds[0]);
