@@ -3,7 +3,7 @@
 ## Dependencies Needed
 
 - CMake (tested with 3.23)
-- Boost (tested with 1.71.0)
+- Boost (tested with 1.73.0/1.79.0)
     - Found via standard CMake `find_package()` call
 - NetworkDirect (Windows build)
     - Download: `nuget.exe install NetworkDirect -Version 2.0.1`
