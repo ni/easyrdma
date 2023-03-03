@@ -8,24 +8,30 @@
 //============================================================================
 //  Class tAccessSuspender
 //============================================================================
-class tAccessSuspender {
-    public:
-        tAccessSuspender(iAccessManaged* _resource, bool startSuspended = true) : resource(_resource), suspended(false) {
-            if(startSuspended) {
-                Suspend();
-            }
+class tAccessSuspender
+{
+public:
+    tAccessSuspender(iAccessManaged* _resource, bool startSuspended = true) :
+        resource(_resource), suspended(false)
+    {
+        if (startSuspended) {
+            Suspend();
         }
-        ~tAccessSuspender() {
-            if(suspended) {
-                resource->GetAccessManager().ResumeAccess();
-            }
+    }
+    ~tAccessSuspender()
+    {
+        if (suspended) {
+            resource->GetAccessManager().ResumeAccess();
         }
-        void Suspend() {
-            assert(!suspended);
-            resource->GetAccessManager().SuspendAccess();
-            suspended = true;
-        }
-    private:
-        bool suspended;
-        iAccessManaged* resource;
+    }
+    void Suspend()
+    {
+        assert(!suspended);
+        resource->GetAccessManager().SuspendAccess();
+        suspended = true;
+    }
+
+private:
+    bool suspended;
+    iAccessManaged* resource;
 };

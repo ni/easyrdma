@@ -17,206 +17,219 @@
 #include "api/easyrdma.h"
 #include "iAccessManaged.h"
 
-
 //============================================================================
 //  Class tAccessManager
 //============================================================================
-class tAccessManager {
+class tAccessManager
+{
+public:
+    //--------------------------------------------------------------------
+    //  Constraints
+    //--------------------------------------------------------------------
+    static const size_t kMaxNestLevel = 32;
+    static const size_t kInitialNumberOfRequestsInAccessManager = 32;
+    //--------------------------------------------------------------------
+    //  Structs
+    //--------------------------------------------------------------------
+    struct tAccessStack
+    {
+        size_t size;
+        bool val[kMaxNestLevel];
+    };
+    //--------------------------------------------------------------------
+    //  Constructor
+    //--------------------------------------------------------------------
+    tAccessManager();
+    ~tAccessManager();
+    //--------------------------------------------------------------------
+    //  Methods
+    //--------------------------------------------------------------------
+    void Acquire(bool exclusive);
+    bool Release();
+    void SuspendAccess();
+    void ResumeAccess();
+    void IncRef();
+    void DecRef();
+    void WaitForAllReferencesToBeReleased();
+    bool HasExclusiveAccess();
+    bool HasSharedAccess();
+    void AcquireAll(const tAccessStack& accessStack);
+    tAccessStack ReleaseAll();
+    //--------------------------------------------------------------------
+    //  Debug methods - some used by unit test infrastructure
+    //--------------------------------------------------------------------
+    void DebugAssertActive(std::thread::id tid);
+    void DebugDump();
+    uint32_t DebugGetRefCount() const;
+    uint32_t DebugGetActiveCount() const;
+    uint32_t DebugGetActiveSharedCount() const;
+    uint32_t DebugGetActiveExclusiveCount() const;
+    void WaitForAllReferencesToBeReleasedWithTimeout(int32_t timeout);
+
+private:
+    tAccessManager(const tAccessManager&) = delete;
+    tAccessManager& operator=(const tAccessManager&) = delete;
+    //--------------------------------------------------------------------
+    //  Local Enums
+    //--------------------------------------------------------------------
+    enum tSatisfyFlags
+    {
+        kHighPriority = 1 << 0,
+        kDifferentThread = 1 << 1
+    };
+    enum tRequestType
+    {
+        kShared,
+        kExclusive,
+        kYieldedTo
+    };
+    //--------------------------------------------------------------------
+    //  Local Classes
+    //--------------------------------------------------------------------
+    class tEvent
+    {
     public:
-        //--------------------------------------------------------------------
-        //  Constraints
-        //--------------------------------------------------------------------
-        static const size_t kMaxNestLevel = 32;
-        static const size_t kInitialNumberOfRequestsInAccessManager = 32;
-        //--------------------------------------------------------------------
-        //  Structs
-        //--------------------------------------------------------------------
-        struct tAccessStack {
-            size_t size;
-            bool val[kMaxNestLevel];
-        };
-        //--------------------------------------------------------------------
-        //  Constructor
-        //--------------------------------------------------------------------
-        tAccessManager();
-        ~tAccessManager();
-        //--------------------------------------------------------------------
-        //  Methods
-        //--------------------------------------------------------------------
-        void Acquire(bool exclusive);
-        bool Release();
-        void SuspendAccess();
-        void ResumeAccess();
-        void IncRef();
-        void DecRef();
-        void WaitForAllReferencesToBeReleased();
-        bool HasExclusiveAccess();
-        bool HasSharedAccess();
-        void AcquireAll(const tAccessStack& accessStack);
-        tAccessStack ReleaseAll();
-        //--------------------------------------------------------------------
-        //  Debug methods - some used by unit test infrastructure
-        //--------------------------------------------------------------------
-        void DebugAssertActive(std::thread::id tid);
-        void DebugDump();
-        uint32_t DebugGetRefCount() const;
-        uint32_t DebugGetActiveCount() const;
-        uint32_t DebugGetActiveSharedCount() const;
-        uint32_t DebugGetActiveExclusiveCount() const;
-        void WaitForAllReferencesToBeReleasedWithTimeout(int32_t timeout);
+        tEvent(bool _autoReset, bool signalledInitially) :
+            autoReset(_autoReset), signalled(signalledInitially)
+        {
+        }
+        void acquireWithTimeout(int32_t timeoutMs)
+        {
+            std::unique_lock<std::mutex> guard(signalLock);
+            while (!signalled) {
+                if (timeoutMs == -1) {
+                    signalCond.wait(guard);
+                } else {
+                    auto result = signalCond.wait_for(guard, std::chrono::milliseconds(timeoutMs));
+                    if (result == std::cv_status::timeout) {
+                        RDMA_THROW(easyrdma_Error_Timeout);
+                    }
+                }
+            }
+            if (autoReset) {
+                signalled = false;
+            }
+        }
+        void release()
+        {
+            std::unique_lock<std::mutex> guard(signalLock);
+            signalled = true;
+            signalCond.notify_all();
+        }
+        void reset()
+        {
+            std::unique_lock<std::mutex> guard(signalLock);
+            signalled = false;
+        }
+
     private:
-        tAccessManager(const tAccessManager&) = delete;
-        tAccessManager& operator=(const tAccessManager&) = delete;
-        //--------------------------------------------------------------------
-        //  Local Enums
-        //--------------------------------------------------------------------
-        enum tSatisfyFlags {
-            kHighPriority    = 1 << 0,
-            kDifferentThread = 1 << 1
-        };
-        enum tRequestType {
-            kShared,
-            kExclusive,
-            kYieldedTo
-        };
-        //--------------------------------------------------------------------
-        //  Local Classes
-        //--------------------------------------------------------------------
-        class tEvent {
-            public:
-                tEvent(bool _autoReset, bool signalledInitially) : autoReset(_autoReset), signalled(signalledInitially) {
-                }
-                void acquireWithTimeout(int32_t timeoutMs) {
-                    std::unique_lock<std::mutex> guard(signalLock);
-                    while(!signalled) {
-                        if(timeoutMs == -1) {
-                            signalCond.wait(guard);
-                        }
-                        else {
-                            auto result = signalCond.wait_for(guard, std::chrono::milliseconds(timeoutMs));
-                            if(result == std::cv_status::timeout) {
-                                RDMA_THROW(easyrdma_Error_Timeout);
-                            }
-                        }
-                    }
-                    if(autoReset) {
-                        signalled = false;
-                    }
-                }
-                void release() {
-                    std::unique_lock<std::mutex> guard(signalLock);
-                    signalled = true;
-                    signalCond.notify_all();
-                }
-                void reset() {
-                    std::unique_lock<std::mutex> guard(signalLock);
-                    signalled = false;
-                }
-            private:
-                bool autoReset;
-                bool signalled;
-                std::mutex signalLock;
-                std::condition_variable signalCond;
-        };
+        bool autoReset;
+        bool signalled;
+        std::mutex signalLock;
+        std::condition_variable signalCond;
+    };
 
-        class tRequest {
-            public:
-                //------------------------------------------------------------
-                //  Constructors & Destructor
-                //------------------------------------------------------------
-                tRequest(std::thread::id tid, tRequestType type);
-                ~tRequest();
-                //------------------------------------------------------------
-                //  New and delete
-                //------------------------------------------------------------
-                void* operator new(size_t size, tAccessManager* requestingManager);
-                void operator delete(void*, tAccessManager*);
-                //------------------------------------------------------------
-                //  Methods
-                //------------------------------------------------------------
-                void Add(tRequestType type);
-                bool RemoveLast();
-                uint32_t Count() const;
-                uint32_t CountExclusive() const;
-                uint32_t CountShared() const;
-                tRequest*& Next();
-                std::thread::id GetTid() const;
-                void WaitForSignal();
-                void Signal();
-                void InitSignal();
-                void TermSignal();
-                void DebugDump();
-            private:
-                tRequest(const tRequest&) = delete;
-                tRequest& operator=(const tRequest&) = delete;
-                //------------------------------------------------------------
-                //  Data Members
-                //------------------------------------------------------------
-                std::thread::id tid;
-                uint32_t shared;
-                uint32_t exclusive;
-                uint32_t nesting;
-                bool yieldedTo;
-                tEvent* signal;
-                tRequest* next;
-                //------------------------------------------------------------
-                //  Undefined Canonicals
-                //------------------------------------------------------------
-                void* operator new(size_t size);
-                void operator delete(void*);
-        };
-        class tRequestList {
-            public:
-                //------------------------------------------------------------
-                //  Constructors & Destructor
-                //------------------------------------------------------------
-                tRequestList();
-                ~tRequestList();
-                //------------------------------------------------------------
-                //  Methods
-                //------------------------------------------------------------
-                tRequest* RemoveHead();
-                tRequest* Remove(std::thread::id tid);
-                void AddAtHead(tRequest* request);
-                void AddAtTail(tRequest* request);
-                uint32_t Count() const;
-                uint32_t CountExclusive() const;
-                uint32_t CountShared() const;
-                void DebugDump(const char*);
-            private:
-                //------------------------------------------------------------
-                //  Data Members
-                //------------------------------------------------------------
-                tRequest* head;
-                uint32_t shared;
-                uint32_t exclusive;
-        };
-        //--------------------------------------------------------------------
+    class tRequest
+    {
+    public:
+        //------------------------------------------------------------
+        //  Constructors & Destructor
+        //------------------------------------------------------------
+        tRequest(std::thread::id tid, tRequestType type);
+        ~tRequest();
+        //------------------------------------------------------------
+        //  New and delete
+        //------------------------------------------------------------
+        void* operator new(size_t size, tAccessManager* requestingManager);
+        void operator delete(void*, tAccessManager*);
+        //------------------------------------------------------------
+        //  Methods
+        //------------------------------------------------------------
+        void Add(tRequestType type);
+        bool RemoveLast();
+        uint32_t Count() const;
+        uint32_t CountExclusive() const;
+        uint32_t CountShared() const;
+        tRequest*& Next();
+        std::thread::id GetTid() const;
+        void WaitForSignal();
+        void Signal();
+        void InitSignal();
+        void TermSignal();
+        void DebugDump();
+
+    private:
+        tRequest(const tRequest&) = delete;
+        tRequest& operator=(const tRequest&) = delete;
+        //------------------------------------------------------------
         //  Data Members
-        //--------------------------------------------------------------------
-        mutable std::recursive_mutex criticalSection;
-        std::atomic<uint32_t> refcount;
-        tRequestList activeRequests;
-        tRequestList pendingRequests;
-        tRequestList suspendedRequests;
-        tRequestList emptyRequests;
-        tEvent allRefsReleased;
-        //--------------------------------------------------------------------
-        //  Private Functions
-        //--------------------------------------------------------------------
-        void GetSharedAccess();
-        void GetExclusiveAccess();
-        void SatisfyRequest(tRequest* request, tSatisfyFlags = static_cast<tSatisfyFlags>(0));
-        tRequestList& GetEmptyRequestList();
-        tRequest* MakeNewRequest();
-        void DestroyRequest(tRequest* request);
-        //--------------------------------------------------------------------
-        //  Unused functions (implemented, but not yet used by AE codebase)
-        //--------------------------------------------------------------------
-        void ReleaseAndReacquireAtEnd();
-        void YieldExclusive(std::thread::id yieldToTid);
-};
+        //------------------------------------------------------------
+        std::thread::id tid;
+        uint32_t shared;
+        uint32_t exclusive;
+        uint32_t nesting;
+        bool yieldedTo;
+        tEvent* signal;
+        tRequest* next;
+        //------------------------------------------------------------
+        //  Undefined Canonicals
+        //------------------------------------------------------------
+        void* operator new(size_t size);
+        void operator delete(void*);
+    };
+    class tRequestList
+    {
+    public:
+        //------------------------------------------------------------
+        //  Constructors & Destructor
+        //------------------------------------------------------------
+        tRequestList();
+        ~tRequestList();
+        //------------------------------------------------------------
+        //  Methods
+        //------------------------------------------------------------
+        tRequest* RemoveHead();
+        tRequest* Remove(std::thread::id tid);
+        void AddAtHead(tRequest* request);
+        void AddAtTail(tRequest* request);
+        uint32_t Count() const;
+        uint32_t CountExclusive() const;
+        uint32_t CountShared() const;
+        void DebugDump(const char*);
 
+    private:
+        //------------------------------------------------------------
+        //  Data Members
+        //------------------------------------------------------------
+        tRequest* head;
+        uint32_t shared;
+        uint32_t exclusive;
+    };
+    //--------------------------------------------------------------------
+    //  Data Members
+    //--------------------------------------------------------------------
+    mutable std::recursive_mutex criticalSection;
+    std::atomic<uint32_t> refcount;
+    tRequestList activeRequests;
+    tRequestList pendingRequests;
+    tRequestList suspendedRequests;
+    tRequestList emptyRequests;
+    tEvent allRefsReleased;
+    //--------------------------------------------------------------------
+    //  Private Functions
+    //--------------------------------------------------------------------
+    void GetSharedAccess();
+    void GetExclusiveAccess();
+    void SatisfyRequest(tRequest* request, tSatisfyFlags = static_cast<tSatisfyFlags>(0));
+    tRequestList& GetEmptyRequestList();
+    tRequest* MakeNewRequest();
+    void DestroyRequest(tRequest* request);
+    //--------------------------------------------------------------------
+    //  Unused functions (implemented, but not yet used by AE codebase)
+    //--------------------------------------------------------------------
+    void ReleaseAndReacquireAtEnd();
+    void YieldExclusive(std::thread::id yieldToTid);
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -255,7 +268,6 @@ inline tAccessManager::tAccessManager() :
     }
 }
 
-
 //////////////////////////////////////////////////////////////////////////////
 //
 //  tAccessManager::~tAccessManager
@@ -264,7 +276,8 @@ inline tAccessManager::tAccessManager() :
 //      Destructs a tAccessManager.
 //
 //////////////////////////////////////////////////////////////////////////////
-inline tAccessManager::~tAccessManager() {
+inline tAccessManager::~tAccessManager()
+{
     //------------------------------------------------------------------------
     //  Go through the empty list and destroy the nodes.
     //------------------------------------------------------------------------
@@ -275,7 +288,6 @@ inline tAccessManager::~tAccessManager() {
     while ((destroy = emptyRequests.RemoveHead()) != NULL)
         DestroyRequest(destroy);
 }
-
 
 //////////////////////////////////////////////////////////////////////////////
 //
@@ -291,16 +303,15 @@ inline tAccessManager::~tAccessManager() {
 //                  acquire shared access.
 //
 //////////////////////////////////////////////////////////////////////////////
-inline void tAccessManager::Acquire(bool exclusive) {
+inline void tAccessManager::Acquire(bool exclusive)
+{
     IncRef();
     if (exclusive) {
         GetExclusiveAccess();
-    }
-    else {
+    } else {
         GetSharedAccess();
     }
 }
-
 
 //////////////////////////////////////////////////////////////////////////////
 //
@@ -315,7 +326,8 @@ inline void tAccessManager::Acquire(bool exclusive) {
 //      True if the access that was release is exclusive, false if shared.
 //
 //////////////////////////////////////////////////////////////////////////////
-inline bool tAccessManager::Release() {
+inline bool tAccessManager::Release()
+{
     bool exclusive;
     //------------------------------------------------------------------------
     //  Remove us from the active request list.  Remove our last request.
@@ -358,11 +370,12 @@ inline bool tAccessManager::Release() {
 //      accessStack - The stack that has access order to acquire.
 //
 //////////////////////////////////////////////////////////////////////////////
-inline void tAccessManager::AcquireAll(const tAccessStack& accessStack) {
+inline void tAccessManager::AcquireAll(const tAccessStack& accessStack)
+{
     assert(accessStack.size > 0);
     assert(accessStack.size <= (sizeof(accessStack.val) / sizeof(*accessStack.val)));
-    for(size_t i = accessStack.size; i > 0; --i) {
-        Acquire(accessStack.val[i-1]);
+    for (size_t i = accessStack.size; i > 0; --i) {
+        Acquire(accessStack.val[i - 1]);
     }
 }
 
@@ -378,7 +391,8 @@ inline void tAccessManager::AcquireAll(const tAccessStack& accessStack) {
 //      accessStack - The order of accesses prior to releasing them all.
 //
 //////////////////////////////////////////////////////////////////////////////
-inline tAccessManager::tAccessStack tAccessManager::ReleaseAll() {
+inline tAccessManager::tAccessStack tAccessManager::ReleaseAll()
+{
     tAccessStack accessStack;
     accessStack.size = 0;
     std::fill(accessStack.val, (accessStack.val + sizeof(accessStack.val)), false);
@@ -398,7 +412,8 @@ inline tAccessManager::tAccessStack tAccessManager::ReleaseAll() {
 //      no new access are added afterwards---the caller must manage that.
 //
 //////////////////////////////////////////////////////////////////////////////
-inline void tAccessManager::WaitForAllReferencesToBeReleased() {
+inline void tAccessManager::WaitForAllReferencesToBeReleased()
+{
     WaitForAllReferencesToBeReleasedWithTimeout(-1);
 }
 
@@ -416,10 +431,10 @@ inline void tAccessManager::WaitForAllReferencesToBeReleased() {
 //      debugTimeoutMs  - timeout in ms or -1
 //
 //////////////////////////////////////////////////////////////////////////////
-inline void tAccessManager::WaitForAllReferencesToBeReleasedWithTimeout(int32_t timeout) {
+inline void tAccessManager::WaitForAllReferencesToBeReleasedWithTimeout(int32_t timeout)
+{
     allRefsReleased.acquireWithTimeout(timeout);
 }
-
 
 //////////////////////////////////////////////////////////////////////////////
 //
@@ -449,7 +464,8 @@ inline void tAccessManager::WaitForAllReferencesToBeReleasedWithTimeout(int32_t 
 //           before we finish tearing down the stream.
 //
 //////////////////////////////////////////////////////////////////////////////
-inline void tAccessManager::ReleaseAndReacquireAtEnd() {
+inline void tAccessManager::ReleaseAndReacquireAtEnd()
+{
     //------------------------------------------------------------------------
     //  The caller expects us to release our access and reacquire access after
     //  adding ourselves to the end of the pending requests list.  If the
@@ -475,7 +491,6 @@ inline void tAccessManager::ReleaseAndReacquireAtEnd() {
     DebugAssertActive(ourTid);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 //
 //  tAccessManager::SuspendAccess
@@ -485,7 +500,8 @@ inline void tAccessManager::ReleaseAndReacquireAtEnd() {
 //      side where they can be restored later.
 //
 ////////////////////////////////////////////////////////////////////////////////
-inline void tAccessManager::SuspendAccess() {
+inline void tAccessManager::SuspendAccess()
+{
     //------------------------------------------------------------------------
     //  Remove our entity from the active request list.
     //------------------------------------------------------------------------
@@ -509,7 +525,6 @@ inline void tAccessManager::SuspendAccess() {
     SatisfyRequest(pendingRequests.RemoveHead(), static_cast<tSatisfyFlags>(kHighPriority | kDifferentThread));
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 //
 //  tAccessManager::ResumeAccess
@@ -518,7 +533,8 @@ inline void tAccessManager::SuspendAccess() {
 //     Restores the access state by the calling thread.
 //
 ////////////////////////////////////////////////////////////////////////////////
-inline void tAccessManager::ResumeAccess() {
+inline void tAccessManager::ResumeAccess()
+{
     //------------------------------------------------------------------------
     //  Find us in the list of suspended access, then satsify our request.
     //------------------------------------------------------------------------
@@ -528,8 +544,7 @@ inline void tAccessManager::ResumeAccess() {
     if (ourRequest) {
         SatisfyRequest(ourRequest);
         DebugAssertActive(ourTid);
-    }
-    else {
+    } else {
         //--------------------------------------------------------------------
         //  Well, we weren't suspended.  If we were yielded to while suspended
         //  then we became active without knowing it.
@@ -537,7 +552,6 @@ inline void tAccessManager::ResumeAccess() {
         DebugAssertActive(ourTid);
     }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -550,7 +564,8 @@ inline void tAccessManager::ResumeAccess() {
 //      yieldTid - The thread to yield to.
 //
 ////////////////////////////////////////////////////////////////////////////////
-inline void tAccessManager::YieldExclusive(std::thread::id yieldTid) {
+inline void tAccessManager::YieldExclusive(std::thread::id yieldTid)
+{
     //------------------------------------------------------------------------
     //  We must already have exclusive access to do this.  Get our request out
     //  of the active requests.  It will be the only one (that's what exclusive
@@ -582,8 +597,7 @@ inline void tAccessManager::YieldExclusive(std::thread::id yieldTid) {
         if (!yieldToRequest->CountExclusive())
             yieldToRequest->Add(kYieldedTo);
         activeRequests.AddAtHead(yieldToRequest);
-    }
-    else {
+    } else {
         //--------------------------------------------------------------------
         //  No request for it yet.  Make one with a yielded to request.
         //--------------------------------------------------------------------
@@ -598,7 +612,6 @@ inline void tAccessManager::YieldExclusive(std::thread::id yieldTid) {
     SatisfyRequest(ourRequest, kHighPriority);
     DebugAssertActive(ourTid);
 }
-
 
 //////////////////////////////////////////////////////////////////////////////
 //
@@ -619,12 +632,12 @@ inline void tAccessManager::YieldExclusive(std::thread::id yieldTid) {
 //      going away.
 //
 //////////////////////////////////////////////////////////////////////////////
-inline void tAccessManager::IncRef() {
-    if(++refcount == 1) {
+inline void tAccessManager::IncRef()
+{
+    if (++refcount == 1) {
         allRefsReleased.reset();
     }
 }
-
 
 //////////////////////////////////////////////////////////////////////////////
 //
@@ -635,16 +648,16 @@ inline void tAccessManager::IncRef() {
 //      This method *MUST* be called for *EVERY* call to IncRef.
 //
 //////////////////////////////////////////////////////////////////////////////
-inline void tAccessManager::DecRef() {
+inline void tAccessManager::DecRef()
+{
     //------------------------------------------------------------------------
     //  Decrement the refcount.
     //------------------------------------------------------------------------
     assert(refcount != 0);
-    if(--refcount == 0) {
+    if (--refcount == 0) {
         allRefsReleased.release();
     }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -658,19 +671,19 @@ inline void tAccessManager::DecRef() {
 //      tid - The thread id to test.
 //
 ////////////////////////////////////////////////////////////////////////////////
-inline void tAccessManager::DebugAssertActive(std::thread::id tid) {
-    #ifdef _DEBUG
-        std::lock_guard<std::recursive_mutex> lock(criticalSection);
-        tRequest* request =  activeRequests.Remove(tid);
-        if (!request) {
-            TRACE("Thread should have been active, but wasn't");
-            DebugDump();
-            assert(0);
-        }
-        activeRequests.AddAtHead(request);
-    #endif
+inline void tAccessManager::DebugAssertActive(std::thread::id tid)
+{
+#ifdef _DEBUG
+    std::lock_guard<std::recursive_mutex> lock(criticalSection);
+    tRequest* request = activeRequests.Remove(tid);
+    if (!request) {
+        TRACE("Thread should have been active, but wasn't");
+        DebugDump();
+        assert(0);
+    }
+    activeRequests.AddAtHead(request);
+#endif
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -680,14 +693,14 @@ inline void tAccessManager::DebugAssertActive(std::thread::id tid) {
 //     Dumps out information about the manager to the debugger.
 //
 ////////////////////////////////////////////////////////////////////////////////
-inline void tAccessManager::DebugDump() {
+inline void tAccessManager::DebugDump()
+{
     std::lock_guard<std::recursive_mutex> lock(criticalSection);
     TRACE("Status of access manager @ %p\n", this);
     activeRequests.DebugDump("active");
     pendingRequests.DebugDump("pending");
     suspendedRequests.DebugDump("suspended");
 }
-
 
 //////////////////////////////////////////////////////////////////////////////
 //
@@ -703,7 +716,8 @@ inline void tAccessManager::DebugDump() {
 //      see above
 //
 //////////////////////////////////////////////////////////////////////////////
-inline bool tAccessManager::HasExclusiveAccess() {
+inline bool tAccessManager::HasExclusiveAccess()
+{
     std::lock_guard<std::recursive_mutex> lock(criticalSection);
     std::thread::id ourTid = std::this_thread::get_id();
     //------------------------------------------------------------------------
@@ -723,7 +737,6 @@ inline bool tAccessManager::HasExclusiveAccess() {
     return activeRequests.CountExclusive() > 0;
 }
 
-
 //////////////////////////////////////////////////////////////////////////////
 //
 //  tAccessManager::HasSharedAccess
@@ -738,7 +751,8 @@ inline bool tAccessManager::HasExclusiveAccess() {
 //      see above
 //
 //////////////////////////////////////////////////////////////////////////////
-inline bool tAccessManager::HasSharedAccess() {
+inline bool tAccessManager::HasSharedAccess()
+{
     std::lock_guard<std::recursive_mutex> lock(criticalSection);
     std::thread::id ourTid = std::this_thread::get_id();
     //------------------------------------------------------------------------
@@ -758,7 +772,6 @@ inline bool tAccessManager::HasSharedAccess() {
     return (activeRequests.CountExclusive() == 0) && (activeRequests.CountShared() > 0);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 //
 //  tAccessManager::GetSharedAccess
@@ -773,7 +786,8 @@ inline bool tAccessManager::HasSharedAccess() {
 //      The new number of accesses by this thread.
 //
 ////////////////////////////////////////////////////////////////////////////////
-inline void tAccessManager::GetSharedAccess() {
+inline void tAccessManager::GetSharedAccess()
+{
     std::lock_guard<std::recursive_mutex> lock(criticalSection);
     std::thread::id ourTid = std::this_thread::get_id();
     //------------------------------------------------------------------------
@@ -797,7 +811,6 @@ inline void tAccessManager::GetSharedAccess() {
     DebugAssertActive(ourTid);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 //
 //  tAccessManager::GetExclusiveAccess
@@ -811,7 +824,8 @@ inline void tAccessManager::GetSharedAccess() {
 //                 has at least one current access reference.
 //
 ////////////////////////////////////////////////////////////////////////////////
-inline void tAccessManager::GetExclusiveAccess() {
+inline void tAccessManager::GetExclusiveAccess()
+{
     std::lock_guard<std::recursive_mutex> lock(criticalSection);
     std::thread::id ourTid = std::this_thread::get_id();
     //------------------------------------------------------------------------
@@ -832,8 +846,7 @@ inline void tAccessManager::GetExclusiveAccess() {
         //  We didn't already have exclusive.  Add on an exclusive access.
         //--------------------------------------------------------------------
         ourRequest->Add(kExclusive);
-    }
-    else {
+    } else {
         //--------------------------------------------------------------------
         //  There wasn't a request yet.  Make one, with exclusive access.
         //--------------------------------------------------------------------
@@ -845,7 +858,6 @@ inline void tAccessManager::GetExclusiveAccess() {
     SatisfyRequest(ourRequest);
     DebugAssertActive(ourTid);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -862,7 +874,8 @@ inline void tAccessManager::GetExclusiveAccess() {
 //      flags   - Flags describing how to handle the request.
 //
 ////////////////////////////////////////////////////////////////////////////////
-inline void tAccessManager::SatisfyRequest(tRequest* request, tSatisfyFlags flags) {
+inline void tAccessManager::SatisfyRequest(tRequest* request, tSatisfyFlags flags)
+{
     //------------------------------------------------------------------------
     //  If there is no request, do nothing and like it.
     //------------------------------------------------------------------------
@@ -908,8 +921,7 @@ inline void tAccessManager::SatisfyRequest(tRequest* request, tSatisfyFlags flag
         DebugAssertActive(request->GetTid());
         SatisfyRequest(pendingRequests.RemoveHead(), static_cast<tSatisfyFlags>(kHighPriority | kDifferentThread));
         return;
-    }
-    else {
+    } else {
         //--------------------------------------------------------------------
         //  The request can be satisfied.  If it was for the calling thread,
         //  just put the request on the active list and return.  If it was
@@ -924,7 +936,6 @@ inline void tAccessManager::SatisfyRequest(tRequest* request, tSatisfyFlags flag
     }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 //
 //  tAccessManager::GetEmptyRequestList
@@ -936,10 +947,10 @@ inline void tAccessManager::SatisfyRequest(tRequest* request, tSatisfyFlags flag
 //      See above.
 //
 ////////////////////////////////////////////////////////////////////////////////
-inline tAccessManager::tRequestList& tAccessManager::GetEmptyRequestList() {
+inline tAccessManager::tRequestList& tAccessManager::GetEmptyRequestList()
+{
     return emptyRequests;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -955,7 +966,8 @@ inline tAccessManager::tRequestList& tAccessManager::GetEmptyRequestList() {
 //      The new request.  NULL on failure.
 //
 ////////////////////////////////////////////////////////////////////////////////
-inline tAccessManager::tRequest* tAccessManager::MakeNewRequest() {
+inline tAccessManager::tRequest* tAccessManager::MakeNewRequest()
+{
     //------------------------------------------------------------------------
     //  Allocate space for it, returning a bad status if the allocation fails.
     //------------------------------------------------------------------------
@@ -968,14 +980,12 @@ inline tAccessManager::tRequest* tAccessManager::MakeNewRequest() {
     tAccessManager::tRequest* request = reinterpret_cast<tRequest*>(memory);
     try {
         request->InitSignal();
-    }
-    catch(std::exception&) {
+    } catch (std::exception&) {
         delete[] memory;
         request = NULL;
     }
     return request;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -989,7 +999,8 @@ inline tAccessManager::tRequest* tAccessManager::MakeNewRequest() {
 //      request - The request to destroy.
 //
 ////////////////////////////////////////////////////////////////////////////////
-inline void tAccessManager::DestroyRequest(tRequest* request) {
+inline void tAccessManager::DestroyRequest(tRequest* request)
+{
     //------------------------------------------------------------------------
     //  Get rid of the signal object created in MakeNewRequest() and free
     //  the memory.
@@ -997,7 +1008,6 @@ inline void tAccessManager::DestroyRequest(tRequest* request) {
     request->TermSignal();
     delete[] reinterpret_cast<uint8_t*>(request);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -1008,23 +1018,26 @@ inline void tAccessManager::DestroyRequest(tRequest* request) {
 //      Returns counters for testing
 //
 ////////////////////////////////////////////////////////////////////////////////
-inline uint32_t tAccessManager::DebugGetRefCount() const {
+inline uint32_t tAccessManager::DebugGetRefCount() const
+{
     std::lock_guard<std::recursive_mutex> lock(criticalSection);
     return refcount;
 }
-inline uint32_t tAccessManager::DebugGetActiveCount() const {
+inline uint32_t tAccessManager::DebugGetActiveCount() const
+{
     std::lock_guard<std::recursive_mutex> lock(criticalSection);
     return activeRequests.Count();
 }
-inline uint32_t tAccessManager::DebugGetActiveSharedCount() const {
+inline uint32_t tAccessManager::DebugGetActiveSharedCount() const
+{
     std::lock_guard<std::recursive_mutex> lock(criticalSection);
     return activeRequests.CountShared();
 }
-inline uint32_t tAccessManager::DebugGetActiveExclusiveCount() const {
+inline uint32_t tAccessManager::DebugGetActiveExclusiveCount() const
+{
     std::lock_guard<std::recursive_mutex> lock(criticalSection);
     return activeRequests.CountExclusive();
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -1038,14 +1051,14 @@ inline uint32_t tAccessManager::DebugGetActiveExclusiveCount() const {
 //      type - The type of the first request.
 //
 ////////////////////////////////////////////////////////////////////////////////
-inline tAccessManager::tRequest::tRequest(std::thread::id _tid, tRequestType type) {
-    tid       = _tid;
-    shared    = exclusive = 0;
+inline tAccessManager::tRequest::tRequest(std::thread::id _tid, tRequestType type)
+{
+    tid = _tid;
+    shared = exclusive = 0;
     yieldedTo = false;
-    next      = NULL;
+    next = NULL;
     Add(type);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -1055,9 +1068,9 @@ inline tAccessManager::tRequest::tRequest(std::thread::id _tid, tRequestType typ
 //      Destructs a request object.
 //
 ////////////////////////////////////////////////////////////////////////////////
-inline tAccessManager::tRequest::~tRequest() {
+inline tAccessManager::tRequest::~tRequest()
+{
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -1075,7 +1088,8 @@ inline tAccessManager::tRequest::~tRequest() {
 //      The new object.
 //
 ////////////////////////////////////////////////////////////////////////////////
-inline void* tAccessManager::tRequest::operator new(size_t, tAccessManager* manager) {
+inline void* tAccessManager::tRequest::operator new(size_t, tAccessManager* manager)
+{
     //------------------------------------------------------------------------
     //  Get the list.  We'll take the top of the list.
     //------------------------------------------------------------------------
@@ -1091,7 +1105,6 @@ inline void* tAccessManager::tRequest::operator new(size_t, tAccessManager* mana
     return newedRequest;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 //
 //  tAccessManager::tRequest::delete
@@ -1106,7 +1119,8 @@ inline void* tAccessManager::tRequest::operator new(size_t, tAccessManager* mana
 //
 //
 ////////////////////////////////////////////////////////////////////////////////
-inline void tAccessManager::tRequest::operator delete(void* _request, tAccessManager* manager) {
+inline void tAccessManager::tRequest::operator delete(void* _request, tAccessManager* manager)
+{
     //------------------------------------------------------------------------
     //  To "delete" a request, just add it to the empty list.
     //------------------------------------------------------------------------
@@ -1114,7 +1128,6 @@ inline void tAccessManager::tRequest::operator delete(void* _request, tAccessMan
     tAccessManager::tRequestList& list = manager->GetEmptyRequestList();
     list.AddAtHead(request);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -1127,7 +1140,8 @@ inline void tAccessManager::tRequest::operator delete(void* _request, tAccessMan
 //      type - The type of the request to add.
 //
 ////////////////////////////////////////////////////////////////////////////////
-inline void tAccessManager::tRequest::Add(tRequestType type) {
+inline void tAccessManager::tRequest::Add(tRequestType type)
+{
     //------------------------------------------------------------------------
     //  Increment the count for the type.
     //------------------------------------------------------------------------
@@ -1161,8 +1175,7 @@ inline void tAccessManager::tRequest::Add(tRequestType type) {
             if (yieldedTo) {
                 yieldedTo = false;
                 break;
-            }
-            else {
+            } else {
                 assert((shared + exclusive) < 32);
                 ++exclusive;
                 nesting = (nesting << 1) | 0;
@@ -1171,7 +1184,6 @@ inline void tAccessManager::tRequest::Add(tRequestType type) {
             }
     }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -1184,7 +1196,8 @@ inline void tAccessManager::tRequest::Add(tRequestType type) {
 //      True if the request was exclusive, false if shared.
 //
 ////////////////////////////////////////////////////////////////////////////////
-inline bool tAccessManager::tRequest::RemoveLast() {
+inline bool tAccessManager::tRequest::RemoveLast()
+{
     assert(!yieldedTo);
     bool isExclusive;
     //------------------------------------------------------------------------
@@ -1194,15 +1207,13 @@ inline bool tAccessManager::tRequest::RemoveLast() {
     if (nesting & 1) {
         --shared;
         isExclusive = false;
-    }
-    else {
+    } else {
         --exclusive;
         isExclusive = true;
     }
     nesting >>= 1;
     return isExclusive;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -1215,10 +1226,10 @@ inline bool tAccessManager::tRequest::RemoveLast() {
 //      See above.
 //
 ////////////////////////////////////////////////////////////////////////////////
-inline uint32_t tAccessManager::tRequest::Count() const {
+inline uint32_t tAccessManager::tRequest::Count() const
+{
     return shared + exclusive;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -1231,10 +1242,10 @@ inline uint32_t tAccessManager::tRequest::Count() const {
 //      See above.
 //
 ////////////////////////////////////////////////////////////////////////////////
-inline uint32_t tAccessManager::tRequest::CountExclusive() const {
+inline uint32_t tAccessManager::tRequest::CountExclusive() const
+{
     return exclusive;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -1247,10 +1258,10 @@ inline uint32_t tAccessManager::tRequest::CountExclusive() const {
 //      See above.
 //
 ////////////////////////////////////////////////////////////////////////////////
-inline uint32_t tAccessManager::tRequest::CountShared() const {
+inline uint32_t tAccessManager::tRequest::CountShared() const
+{
     return shared;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -1263,10 +1274,10 @@ inline uint32_t tAccessManager::tRequest::CountShared() const {
 //     See above.
 //
 ////////////////////////////////////////////////////////////////////////////////
-inline tAccessManager::tRequest*& tAccessManager::tRequest::Next() {
+inline tAccessManager::tRequest*& tAccessManager::tRequest::Next()
+{
     return next;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -1279,10 +1290,10 @@ inline tAccessManager::tRequest*& tAccessManager::tRequest::Next() {
 //      See above.
 //
 ////////////////////////////////////////////////////////////////////////////////
-inline std::thread::id tAccessManager::tRequest::GetTid() const {
+inline std::thread::id tAccessManager::tRequest::GetTid() const
+{
     return tid;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -1296,10 +1307,10 @@ inline std::thread::id tAccessManager::tRequest::GetTid() const {
 //      NOTE:  Don't call this while holding the manager's critical section.
 //
 ////////////////////////////////////////////////////////////////////////////////
-inline void tAccessManager::tRequest::WaitForSignal() {
+inline void tAccessManager::tRequest::WaitForSignal()
+{
     signal->acquireWithTimeout(-1);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -1309,10 +1320,10 @@ inline void tAccessManager::tRequest::WaitForSignal() {
 //      Signals the given request.
 //
 ////////////////////////////////////////////////////////////////////////////////
-inline void tAccessManager::tRequest::Signal() {
+inline void tAccessManager::tRequest::Signal()
+{
     signal->release();
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -1326,14 +1337,14 @@ inline void tAccessManager::tRequest::Signal() {
 //      status - Status parameter.
 //
 ////////////////////////////////////////////////////////////////////////////////
-inline void tAccessManager::tRequest::InitSignal() {
+inline void tAccessManager::tRequest::InitSignal()
+{
     signal = NULL;
     //------------------------------------------------------------------------
     //  Allocate a new event object that auto-resets and is not signaled initially.
     //------------------------------------------------------------------------
     signal = new tEvent(true, false);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -1344,11 +1355,11 @@ inline void tAccessManager::tRequest::InitSignal() {
 //      be the deallocator.
 //
 ////////////////////////////////////////////////////////////////////////////////
-inline void tAccessManager::tRequest::TermSignal() {
+inline void tAccessManager::tRequest::TermSignal()
+{
     delete signal;
     signal = NULL;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -1358,12 +1369,12 @@ inline void tAccessManager::tRequest::TermSignal() {
 //      Dumps out information about the request to the debugger.
 //
 ////////////////////////////////////////////////////////////////////////////////
-inline void tAccessManager::tRequest::DebugDump() {
+inline void tAccessManager::tRequest::DebugDump()
+{
     std::stringstream tidStr;
     tidStr << tid;
     TRACE("tAccessManager: tid = %s sh = %d  ex = %d nesting = %08X  yieldedTo = %s\n", tidStr.str().c_str(), shared, exclusive, nesting, ((yieldedTo ? "true" : "false")));
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -1373,11 +1384,11 @@ inline void tAccessManager::tRequest::DebugDump() {
 //      Builds a new request list.
 //
 ////////////////////////////////////////////////////////////////////////////////
-inline tAccessManager::tRequestList::tRequestList() {
+inline tAccessManager::tRequestList::tRequestList()
+{
     shared = exclusive = 0;
     head = NULL;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -1387,12 +1398,12 @@ inline tAccessManager::tRequestList::tRequestList() {
 //      Destructs a request list.
 //
 ////////////////////////////////////////////////////////////////////////////////
-inline tAccessManager::tRequestList::~tRequestList() {
+inline tAccessManager::tRequestList::~tRequestList()
+{
     //------------------------------------------------------------------------
     //  Cleaning up the list is the responsibility of the manager.
     //------------------------------------------------------------------------
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -1406,7 +1417,8 @@ inline tAccessManager::tRequestList::~tRequestList() {
 //      The former head of the list.
 //
 ////////////////////////////////////////////////////////////////////////////////
-inline tAccessManager::tRequest* tAccessManager::tRequestList::RemoveHead() {
+inline tAccessManager::tRequest* tAccessManager::tRequestList::RemoveHead()
+{
     //------------------------------------------------------------------------
     //  If there is actually a head, then decrement the counts and point
     //  head to whatever used to be second in the list.
@@ -1420,7 +1432,6 @@ inline tAccessManager::tRequest* tAccessManager::tRequestList::RemoveHead() {
     return retval;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 //
 //  tAccessManager::tRequestList::Remove
@@ -1432,11 +1443,12 @@ inline tAccessManager::tRequest* tAccessManager::tRequestList::RemoveHead() {
 //      The entry.  NULL if the the tid was not in the list.
 //
 ////////////////////////////////////////////////////////////////////////////////
-inline tAccessManager::tRequest* tAccessManager::tRequestList::Remove(std::thread::id tid) {
+inline tAccessManager::tRequest* tAccessManager::tRequestList::Remove(std::thread::id tid)
+{
     //------------------------------------------------------------------------
     //  Find the entry that has the tid, if it is there.
     //------------------------------------------------------------------------
-    tRequest** cur  = &head;
+    tRequest** cur = &head;
     while (*cur && (*cur)->GetTid() != tid)
         cur = &((*cur)->Next());
     if (!*cur)
@@ -1452,7 +1464,6 @@ inline tAccessManager::tRequest* tAccessManager::tRequestList::Remove(std::threa
     return retval;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 //
 //  tAccessManager::tRequestList::AddAtHead
@@ -1464,7 +1475,8 @@ inline tAccessManager::tRequest* tAccessManager::tRequestList::Remove(std::threa
 //      request - The request to add.
 //
 ////////////////////////////////////////////////////////////////////////////////
-inline void tAccessManager::tRequestList::AddAtHead(tRequest* request) {
+inline void tAccessManager::tRequestList::AddAtHead(tRequest* request)
+{
     //------------------------------------------------------------------------
     //  Put us at the head and add in the counts.
     //------------------------------------------------------------------------
@@ -1473,7 +1485,6 @@ inline void tAccessManager::tRequestList::AddAtHead(tRequest* request) {
     shared += request->CountShared();
     exclusive += request->CountExclusive();
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -1486,7 +1497,8 @@ inline void tAccessManager::tRequestList::AddAtHead(tRequest* request) {
 //      request - The request to add.
 //
 ////////////////////////////////////////////////////////////////////////////////
-inline void tAccessManager::tRequestList::AddAtTail(tRequest* request) {
+inline void tAccessManager::tRequestList::AddAtTail(tRequest* request)
+{
     //------------------------------------------------------------------------
     //  Find the pointer to NULL
     //------------------------------------------------------------------------
@@ -1503,7 +1515,6 @@ inline void tAccessManager::tRequestList::AddAtTail(tRequest* request) {
     exclusive += request->CountExclusive();
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 //
 //  tAccessManager::tRequestList::Count
@@ -1516,10 +1527,10 @@ inline void tAccessManager::tRequestList::AddAtTail(tRequest* request) {
 //      See above.
 //
 ////////////////////////////////////////////////////////////////////////////////
-inline uint32_t tAccessManager::tRequestList::Count() const {
+inline uint32_t tAccessManager::tRequestList::Count() const
+{
     return shared + exclusive;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -1532,10 +1543,10 @@ inline uint32_t tAccessManager::tRequestList::Count() const {
 //      See above.
 //
 ////////////////////////////////////////////////////////////////////////////////
-inline uint32_t tAccessManager::tRequestList::CountExclusive() const {
+inline uint32_t tAccessManager::tRequestList::CountExclusive() const
+{
     return exclusive;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -1548,10 +1559,10 @@ inline uint32_t tAccessManager::tRequestList::CountExclusive() const {
 //      See above.
 //
 ////////////////////////////////////////////////////////////////////////////////
-inline uint32_t tAccessManager::tRequestList::CountShared() const {
+inline uint32_t tAccessManager::tRequestList::CountShared() const
+{
     return shared;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -1564,7 +1575,8 @@ inline uint32_t tAccessManager::tRequestList::CountShared() const {
 //      data - A string to prepend our data with.
 //
 ////////////////////////////////////////////////////////////////////////////////
-inline void tAccessManager::tRequestList::DebugDump(const char* data) {
+inline void tAccessManager::tRequestList::DebugDump(const char* data)
+{
     TRACE("tAccessManager::tRequestList: %s:  %dsh %dex\n", data, shared, exclusive);
     tRequest* cur = head;
     while (cur) {
@@ -1572,4 +1584,3 @@ inline void tAccessManager::tRequestList::DebugDump(const char* data) {
         cur = cur->Next();
     }
 }
-

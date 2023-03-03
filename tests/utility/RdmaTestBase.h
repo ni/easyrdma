@@ -13,30 +13,37 @@
 #include "tests/utility/Utility.h"
 
 template <typename GtestType>
-class RdmaTestBase : public GtestType, public TestLogger {
+class RdmaTestBase : public GtestType, public TestLogger
+{
 public:
-    RdmaTestBase() {
+    RdmaTestBase()
+    {
         beginTest();
     }
-    virtual ~RdmaTestBase() {
+    virtual ~RdmaTestBase()
+    {
         auto test_log_data = endTest();
         ::testing::Test::RecordProperty("TestOutput", test_log_data.logs);
     }
-    std::pair<RdmaAddress, RdmaAddress> GetEndpointAddresses() {
+    std::pair<RdmaAddress, RdmaAddress> GetEndpointAddresses()
+    {
         TestEndpoints endpoints = GtestType::GetParam();
         return std::make_pair(RdmaAddress(endpoints.endpointA, 50001), RdmaAddress(endpoints.endpointB, 50002));
     }
 
-    struct ConnectionPair {
+    struct ConnectionPair
+    {
         Session sender;
         Session receiver;
-        void Close() {
+        void Close()
+        {
             sender.Close();
             receiver.Close();
         }
     };
 
-    ConnectionPair GetLoopbackConnection() {
+    ConnectionPair GetLoopbackConnection()
+    {
         auto endpoints = GetEndpointAddresses();
         RdmaAddress localAddressListener = endpoints.first;
         RdmaAddress localAddressConnector = endpoints.second;
@@ -47,10 +54,10 @@ public:
 
         accept = std::async(std::launch::async, [&]() {
             return sessionListener.Accept(easyrdma_Direction_Receive);
-        } );
+        });
         sessionConnectorSender.Connect(easyrdma_Direction_Send, localAddressListener.GetAddrString(), sessionListener.GetLocalPort());
         Session sessionReceiver = std::move(accept.get());
 
-        return { std::move(sessionConnectorSender), std::move(sessionReceiver) };
+        return {std::move(sessionConnectorSender), std::move(sessionReceiver)};
     }
 };

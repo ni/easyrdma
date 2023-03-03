@@ -10,7 +10,6 @@
 #include <chrono>
 #include "tests/utility/Utility.h"
 
-
 #ifdef _WIN32
 int __cdecl main(int argc, char** argv)
 #else
@@ -18,14 +17,10 @@ int main(int argc, char** argv)
 #endif
 {
     try {
-
         boost::program_options::options_description desc;
         std::string adapterAddressString;
 
-        desc.add_options()
-        ("help", "produce help message")
-        ("wait", "Waits on test exe launch, to allow debugger attach")
-        ;
+        desc.add_options()("help", "produce help message")("wait", "Waits on test exe launch, to allow debugger attach");
 
         boost::program_options::variables_map vm;
 
@@ -41,14 +36,15 @@ int main(int argc, char** argv)
         testing::InitGoogleTest(&argc, argv);
 
         if (vm.count("help")) {
-            std::cout << std::endl << "** Additional options **" << std::endl;
+            std::cout << std::endl
+                      << "** Additional options **" << std::endl;
             std::cout << desc << "\n";
             return 1;
         }
 
 #ifdef __linux__
         // Linux RT defaults to 1024 max file descriptors
-        if(system("ulimit -n 65536") != 0) {
+        if (system("ulimit -n 65536") != 0) {
             std::cerr << "Unable to change max number of filesystem handles.\n";
         }
 
@@ -59,8 +55,7 @@ int main(int argc, char** argv)
 #endif
 
         return RUN_ALL_TESTS();
-    }
-    catch(const std::exception& e) {
+    } catch (const std::exception& e) {
         std::cout << "Error " << e.what() << std::endl;
         return 1;
     }

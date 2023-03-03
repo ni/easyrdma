@@ -5,9 +5,11 @@
 #include "easyrdma.h"
 #include "tests/utility/Utility.h"
 
-class Enumeration {
+class Enumeration
+{
 public:
-    static std::vector<std::string> EnumerateInterfaces(int32_t filterAddressFamily = 0) {
+    static std::vector<std::string> EnumerateInterfaces(int32_t filterAddressFamily = 0)
+    {
         size_t numAddresses = 0;
         RDMA_THROW_IF_FATAL(easyrdma_Enumerate(nullptr, &numAddresses, filterAddressFamily));
         std::vector<std::string> interfaces;

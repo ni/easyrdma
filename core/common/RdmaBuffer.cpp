@@ -8,30 +8,35 @@
 #include <assert.h>
 #include <memory>
 
-RdmaBuffer::RdmaBuffer(RdmaConnectedSessionBase& _connection, RdmaBufferQueue& _bufferQueue, size_t index)
-    : connection(_connection), bufferQueue(_bufferQueue), bufferIndex(index) {
+RdmaBuffer::RdmaBuffer(RdmaConnectedSessionBase& _connection, RdmaBufferQueue& _bufferQueue, size_t index) :
+    connection(_connection), bufferQueue(_bufferQueue), bufferIndex(index)
+{
 }
 
-RdmaBuffer::~RdmaBuffer() {
+RdmaBuffer::~RdmaBuffer()
+{
 }
 
-
-void RdmaBuffer::Requeue() {
+void RdmaBuffer::Requeue()
+{
     connection.QueueBuffer(this);
 }
 
-void RdmaBuffer::Release() {
+void RdmaBuffer::Release()
+{
     bufferQueue.ReleaseBuffer(this);
 }
 
-BufferCompletionCallbackData RdmaBuffer::GetAndClearClearCallbackData() {
+BufferCompletionCallbackData RdmaBuffer::GetAndClearClearCallbackData()
+{
     auto copy = completionCallbackData;
     completionCallbackData = BufferCompletionCallbackData({});
     return copy;
 }
 
-RdmaBufferInternal::RdmaBufferInternal(RdmaConnectedSessionBase& _connection, RdmaBufferQueue& _bufferQueue, size_t size, size_t index)
-  : RdmaBuffer(_connection, _bufferQueue, index), allocatedBuffer(nullptr) {
+RdmaBufferInternal::RdmaBufferInternal(RdmaConnectedSessionBase& _connection, RdmaBufferQueue& _bufferQueue, size_t size, size_t index) :
+    RdmaBuffer(_connection, _bufferQueue, index), allocatedBuffer(nullptr)
+{
     bufferMaxSize = size;
     bufferSize = size;
 
@@ -41,46 +46,53 @@ RdmaBufferInternal::RdmaBufferInternal(RdmaConnectedSessionBase& _connection, Rd
     memoryRegion = connection.CreateMemoryRegion(buffer, bufferSize);
 }
 
-RdmaBufferInternal::~RdmaBufferInternal() {
+RdmaBufferInternal::~RdmaBufferInternal()
+{
     memoryRegion.reset();
     buffer = nullptr;
-    if(allocatedBuffer) {
+    if (allocatedBuffer) {
         FreeAlignedMemory(allocatedBuffer);
     }
 }
 
-void RdmaBufferInternal::SetBytesToSubmit(size_t size) {
-    if(size > bufferMaxSize) {
+void RdmaBufferInternal::SetBytesToSubmit(size_t size)
+{
+    if (size > bufferMaxSize) {
         RDMA_THROW(easyrdma_Error_InvalidArgument);
     }
     bufferSize = size;
 }
 
-void RdmaBuffer::SetCompletionCallback(const BufferCompletionCallbackData& _completionCallbackData) {
+void RdmaBuffer::SetCompletionCallback(const BufferCompletionCallbackData& _completionCallbackData)
+{
     completionCallbackData = _completionCallbackData;
 }
 
-void RdmaBuffer::SetUsed(size_t size) { 
-    if(size > bufferSize) {
+void RdmaBuffer::SetUsed(size_t size)
+{
+    if (size > bufferSize) {
         RDMA_THROW(easyrdma_Error_InvalidSize);
     }
     usedBytes = size;
 }
 
-void RdmaBuffer::HandleCompletion(RdmaError& completionStatus, size_t bytesTransferred) {
+void RdmaBuffer::HandleCompletion(RdmaError& completionStatus, size_t bytesTransferred)
+{
     usedBytes = bytesTransferred;
     bufferQueue.HandleCompletion(*this, completionStatus, false);
 }
 
-RdmaBufferExternal::RdmaBufferExternal(RdmaConnectedSessionBase& _connection, RdmaBufferQueue& _bufferQueue, RdmaMemoryRegion* _memoryRegion, size_t index)
-: RdmaBuffer(_connection, _bufferQueue, index), memoryRegion(_memoryRegion) {
+RdmaBufferExternal::RdmaBufferExternal(RdmaConnectedSessionBase& _connection, RdmaBufferQueue& _bufferQueue, RdmaMemoryRegion* _memoryRegion, size_t index) :
+    RdmaBuffer(_connection, _bufferQueue, index), memoryRegion(_memoryRegion)
+{
 }
 
-RdmaBufferExternal::~RdmaBufferExternal() {
+RdmaBufferExternal::~RdmaBufferExternal()
+{
 }
 
-
-void RdmaBufferExternal::SetBufferRegion(void* _buffer, size_t size) {
+void RdmaBufferExternal::SetBufferRegion(void* _buffer, size_t size)
+{
     buffer = _buffer;
     bufferSize = size;
     usedBytes = size;

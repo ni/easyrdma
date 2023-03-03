@@ -14,27 +14,28 @@
 #include <stdint.h>
 
 #ifdef __cplusplus
-   extern "C" {
+extern "C"
+{
 #endif
 
 #if defined(_WIN32)
-    #define C_CONV __cdecl
-    #if defined(_BUILDING_EASYRDMA)
-        #define _IMPORT_EXPORT __declspec(dllexport)
-    #else
-        #define _IMPORT_EXPORT __declspec(dllimport)
-    #endif
+#define C_CONV __cdecl
+#if defined(_BUILDING_EASYRDMA)
+#define _IMPORT_EXPORT __declspec(dllexport)
 #else
-    #define C_CONV
-    #if defined(_BUILDING_EASYRDMA)
-        #define _IMPORT_EXPORT __attribute__ ((section (".export")))
-    #else
-        #define _IMPORT_EXPORT
-    #endif
+#define _IMPORT_EXPORT __declspec(dllimport)
 #endif
-#define  _RDMA_FUNC _IMPORT_EXPORT C_CONV
+#else
+#define C_CONV
+#if defined(_BUILDING_EASYRDMA)
+#define _IMPORT_EXPORT __attribute__((section(".export")))
+#else
+#define _IMPORT_EXPORT
+#endif
+#endif
+#define _RDMA_FUNC _IMPORT_EXPORT C_CONV
 
-#pragma pack( push, 8 )
+#pragma pack(push, 8)
 
 // EasyRDMA Error codes
 #define easyrdma_Error_Success 0
@@ -68,51 +69,58 @@
 #define easyrdma_Error_SendTooLargeForRecvBuffer -734028 // 0xFFF4CCB4: The Send buffer is too large.
 
 // Direction used in Connect/Accept
-#define easyrdma_Direction_Send      0x00
-#define easyrdma_Direction_Receive   0x01
+#define easyrdma_Direction_Send 0x00
+#define easyrdma_Direction_Receive 0x01
 
 // Enumeration address type filter
-#define easyrdma_AddressFamily_AF_UNSPEC  0x00 // Enumerate any address family
-#define easyrdma_AddressFamily_AF_INET    0x04 // Enumerate only IPv4 interfaces
-#define easyrdma_AddressFamily_AF_INET6   0x06 // Enumerate only IPv6 interfaces
+#define easyrdma_AddressFamily_AF_UNSPEC 0x00 // Enumerate any address family
+#define easyrdma_AddressFamily_AF_INET 0x04 // Enumerate only IPv4 interfaces
+#define easyrdma_AddressFamily_AF_INET6 0x06 // Enumerate only IPv6 interfaces
 
 // Properties
-#define easyrdma_Property_QueuedBuffers   0x100     // uint64_t
-#define easyrdma_Property_Connected       0x101     // uint8_t/bool
-#define easyrdma_Property_UserBuffers     0x102     // uint64_t
-#define easyrdma_Property_UseRxPolling    0x103     // uint8_t/bool
+#define easyrdma_Property_QueuedBuffers 0x100 // uint64_t
+#define easyrdma_Property_Connected 0x101 // uint8_t/bool
+#define easyrdma_Property_UserBuffers 0x102 // uint64_t
+#define easyrdma_Property_UseRxPolling 0x103 // uint8_t/bool
 
 // Internal-use-only properties (for testing -- do not use)
-#define easyrdma_Property_NumOpenedSessions                0x200     // uint64_t
-#define easyrdma_Property_NumPendingDestructionSessions    0x201     // uint64_t
-#define easyrdma_Property_ConnectionData                   0x202     // binary blob
+#define easyrdma_Property_NumOpenedSessions 0x200 // uint64_t
+#define easyrdma_Property_NumPendingDestructionSessions 0x201 // uint64_t
+#define easyrdma_Property_ConnectionData 0x202 // binary blob
 
 // Flags
-#define easyrdma_CloseFlags_DeferWhileUserBuffersOutstanding   0x01
+#define easyrdma_CloseFlags_DeferWhileUserBuffersOutstanding 0x01
 
 // Structures
-struct easyrdma_AddressString {
+struct easyrdma_AddressString
+{
     char addressString[64];
 };
 
-struct easyrdma_InternalBufferRegion {
-    union {
-        struct {
-            struct {
-                void* buffer;                // Pointer to internally-allocated buffer
-                size_t bufferSize;           // Size of internally-allocated buffer
-                size_t usedSize;             // Size actually filled (set by API on receive, can be overridden by caller on send)
+struct easyrdma_InternalBufferRegion
+{
+    union
+    {
+        struct
+        {
+            struct
+            {
+                void* buffer; // Pointer to internally-allocated buffer
+                size_t bufferSize; // Size of internally-allocated buffer
+                size_t usedSize; // Size actually filled (set by API on receive, can be overridden by caller on send)
             };
-            struct {
-                void* internalReference1;    // Used internally by the API
-                void* internalReference2;    // Used internally by the API
+            struct
+            {
+                void* internalReference1; // Used internally by the API
+                void* internalReference2; // Used internally by the API
             } Internal;
         };
-        char padding[64];                    // Ensure struct is large enough for future additions
+        char padding[64]; // Ensure struct is large enough for future additions
     };
 };
 
-struct easyrdma_ErrorInfo {
+struct easyrdma_ErrorInfo
+{
     int errorCode;
     int errorSubCode;
     const char* filename;
@@ -120,9 +128,10 @@ struct easyrdma_ErrorInfo {
 };
 
 // Callback function for buffer completion
-typedef void (C_CONV *easyrdma_BufferCompletionCallback)(void* context1, void* context2, int32_t completionStatus, size_t completedBytes);
+typedef void(C_CONV* easyrdma_BufferCompletionCallback)(void* context1, void* context2, int32_t completionStatus, size_t completedBytes);
 
-struct easyrdma_BufferCompletionCallbackData {
+struct easyrdma_BufferCompletionCallbackData
+{
     easyrdma_BufferCompletionCallback callbackFunction = nullptr;
     void* context1 = nullptr;
     void* context2 = nullptr;
@@ -154,12 +163,12 @@ int32_t _RDMA_FUNC easyrdma_ReleaseUserBufferRegionToIdle(easyrdma_Session sessi
 int32_t _RDMA_FUNC easyrdma_GetLastError(easyrdma_ErrorInfo* status);
 
 // Internal-use-only functions (for testing -- do not use)
-void    _RDMA_FUNC easyrdma_testsetLastOsError(int osErrorCode);
+void _RDMA_FUNC easyrdma_testsetLastOsError(int osErrorCode);
 
-#pragma pack( pop )
+#pragma pack(pop)
 
 #ifdef __cplusplus
-   }
+}
 #endif
 
 #endif //_easyrdma_h_

@@ -8,7 +8,6 @@
 #include "core/api/tAccessManagedRef.h"
 #include "tests/utility/Utility.h"
 
-
 //============================================================================
 //  Includes
 //============================================================================
@@ -20,8 +19,8 @@
 #include <chrono>
 #include <thread>
 
-
-namespace EasyRDMA {
+namespace EasyRDMA
+{
 
 //////////////////////////////////////////////////////////////////////////////
 //
@@ -31,7 +30,8 @@ namespace EasyRDMA {
 //      Checks basic usage in single-threaded fashion
 //
 //////////////////////////////////////////////////////////////////////////////
-TEST(AccessManager, Sanity) {
+TEST(AccessManager, Sanity)
+{
     tAccessManager accessManager;
 
     // Exclusive access
@@ -136,7 +136,6 @@ TEST(AccessManager, Sanity) {
     EXPECT_FALSE(accessManager.HasSharedAccess());
 }
 
-
 //////////////////////////////////////////////////////////////////////////////
 //
 //  AccessManagerExclusiveThreadTester
@@ -145,13 +144,13 @@ TEST(AccessManager, Sanity) {
 //     Thread for BasicThreading test
 //
 //////////////////////////////////////////////////////////////////////////////
-void AccessManagerExclusiveThreadTester(tAccessManager* accessManager, int numLoops, int maxTimeMs, std::atomic<uint32_t>* contendedData, bool mixSharedAccess) {
-
+void AccessManagerExclusiveThreadTester(tAccessManager* accessManager, int numLoops, int maxTimeMs, std::atomic<uint32_t>* contendedData, bool mixSharedAccess)
+{
     // Init random generator
     std::random_device randomdev;
     std::mt19937 gen(randomdev());
 
-    for(int i=0; i < numLoops; ++i) {
+    for (int i = 0; i < numLoops; ++i) {
         // Choose a random time interval from 1-maxTimeMs
         std::uniform_int_distribution<int> uniform_dist(1, maxTimeMs);
         int millisec = uniform_dist(gen);
@@ -164,9 +163,9 @@ void AccessManagerExclusiveThreadTester(tAccessManager* accessManager, int numLo
         // Get access
         accessManager->Acquire(!shared);
         auto start = std::chrono::system_clock::now();
-        while(1) {
+        while (1) {
             (*contendedData)++;
-            if(shared) {
+            if (shared) {
                 // Don't know how many total haved shared access, just
                 // that it must be >0. Nobody can have exclusive
                 EXPECT_LT(0UL, accessManager->DebugGetActiveCount());
@@ -175,8 +174,7 @@ void AccessManagerExclusiveThreadTester(tAccessManager* accessManager, int numLo
                 EXPECT_LT(0UL, *contendedData);
                 EXPECT_FALSE(accessManager->HasExclusiveAccess());
                 EXPECT_TRUE(accessManager->HasSharedAccess());
-            }
-            else {
+            } else {
                 // Check that we are the only one with exclusive access
                 EXPECT_EQ(1UL, accessManager->DebugGetActiveCount());
                 EXPECT_EQ(1UL, accessManager->DebugGetActiveExclusiveCount());
@@ -188,7 +186,7 @@ void AccessManagerExclusiveThreadTester(tAccessManager* accessManager, int numLo
             (*contendedData)--;
             auto millisecPassed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - start);
             // Keep polling for remaining time up to maxTimeMs
-            if(millisecPassed.count() > maxTimeMs-millisec) {
+            if (millisecPassed.count() > maxTimeMs - millisec) {
                 break;
             }
         }
@@ -206,7 +204,8 @@ void AccessManagerExclusiveThreadTester(tAccessManager* accessManager, int numLo
 //     validates exclusive sync as well as access manager counters
 //
 //////////////////////////////////////////////////////////////////////////////
-TEST(AccessManager, BasicThreading) {
+TEST(AccessManager, BasicThreading)
+{
     tAccessManager accessManager;
 
     const size_t numThreads = 8;
@@ -215,10 +214,10 @@ TEST(AccessManager, BasicThreading) {
 
     std::thread threads[numThreads];
     std::atomic<uint32_t> contendedData(0);
-    for(size_t i=0; i < numThreads; ++i) {
+    for (size_t i = 0; i < numThreads; ++i) {
         threads[i] = std::thread(AccessManagerExclusiveThreadTester, &accessManager, numLoops, maxTimeMs, &contendedData, false /* mixSharedAccess */);
     }
-    for(size_t i=0; i < numThreads; ++i) {
+    for (size_t i = 0; i < numThreads; ++i) {
         threads[i].join();
     }
     EXPECT_EQ(0UL, contendedData);
@@ -236,7 +235,8 @@ TEST(AccessManager, BasicThreading) {
 //     Helper thread for AllRefsReleased test
 //
 //////////////////////////////////////////////////////////////////////////////
-void AllRefsReleasedThread(tAccessManager* accessManager, uint32_t timeout, bool* sawEvent) {
+void AllRefsReleasedThread(tAccessManager* accessManager, uint32_t timeout, bool* sawEvent)
+{
     *sawEvent = false;
     EXPECT_NO_THROW(accessManager->WaitForAllReferencesToBeReleasedWithTimeout(timeout));
     *sawEvent = true;
@@ -250,7 +250,8 @@ void AllRefsReleasedThread(tAccessManager* accessManager, uint32_t timeout, bool
 //     Tests the AllRefsReleased event mechanism
 //
 //////////////////////////////////////////////////////////////////////////////
-TEST(AccessManager, AllRefsReleased) {
+TEST(AccessManager, AllRefsReleased)
+{
     tAccessManager accessManager;
 
     uint32_t timeout = 10;
@@ -289,7 +290,8 @@ TEST(AccessManager, AllRefsReleased) {
 //     validates exclusive sync as well as access manager counters
 //
 //////////////////////////////////////////////////////////////////////////////
-TEST(AccessManager, SharedExclusiveThreading) {
+TEST(AccessManager, SharedExclusiveThreading)
+{
     tAccessManager accessManager;
 
     const size_t numThreads = 8;
@@ -298,10 +300,10 @@ TEST(AccessManager, SharedExclusiveThreading) {
 
     std::thread threads[numThreads];
     std::atomic<uint32_t> contendedData(0);
-    for(size_t i=0; i < numThreads; ++i) {
+    for (size_t i = 0; i < numThreads; ++i) {
         threads[i] = std::thread(AccessManagerExclusiveThreadTester, &accessManager, numLoops, maxTimeMs, &contendedData, true /* mixSharedAccess */);
     }
-    for(size_t i=0; i < numThreads; ++i) {
+    for (size_t i = 0; i < numThreads; ++i) {
         threads[i].join();
     }
     EXPECT_EQ(0UL, contendedData);
@@ -311,8 +313,6 @@ TEST(AccessManager, SharedExclusiveThreading) {
     EXPECT_EQ(0UL, accessManager.DebugGetActiveSharedCount());
 }
 
-
-
 //////////////////////////////////////////////////////////////////////////////
 //
 //  AutoRef test
@@ -321,14 +321,19 @@ TEST(AccessManager, SharedExclusiveThreading) {
 //     Checks that the autoref class works as expected
 //
 //////////////////////////////////////////////////////////////////////////////
-class AccessManagerOwner : public iAccessManaged {
+class AccessManagerOwner : public iAccessManaged
+{
 public:
-    AccessManagerOwner() { };
-    virtual tAccessManager& GetAccessManager() { return accessManager; };
+    AccessManagerOwner(){};
+    virtual tAccessManager& GetAccessManager()
+    {
+        return accessManager;
+    };
     tAccessManager accessManager;
 };
 
-TEST(AccessManager, AutoRef) {
+TEST(AccessManager, AutoRef)
+{
     auto resource = std::make_shared<AccessManagerOwner>();
 
     // Shared
@@ -389,24 +394,24 @@ TEST(AccessManager, AutoRef) {
 //     Checks if Release is returning the access in the correct order
 //
 //////////////////////////////////////////////////////////////////////////////
-TEST(AccessManager, ReleaseReturn) {
+TEST(AccessManager, ReleaseReturn)
+{
     tAccessManager accessManager;
 
-     const std::vector<std::vector<bool>> releaseTestCases{
+    const std::vector<std::vector<bool>> releaseTestCases{
         {true},
         {false},
         {true, true, false, true},
-        {true, true, false, true, false, false}
-    };
+        {true, true, false, true, false, false}};
 
-    for(auto testCase : releaseTestCases) {
+    for (auto testCase : releaseTestCases) {
         // Acquire the proper access
-        for(auto exclusive : testCase) {
+        for (auto exclusive : testCase) {
             accessManager.Acquire(exclusive);
         }
         EXPECT_EQ(testCase.size(), accessManager.DebugGetRefCount());
-        for(size_t i = testCase.size(); i > 0; --i) {
-            EXPECT_EQ(testCase[i-1], accessManager.Release());
+        for (size_t i = testCase.size(); i > 0; --i) {
+            EXPECT_EQ(testCase[i - 1], accessManager.Release());
         }
     }
 }
@@ -419,7 +424,8 @@ TEST(AccessManager, ReleaseReturn) {
 //     Tests AcquireAll method without using RequestAll
 //
 //////////////////////////////////////////////////////////////////////////////
-TEST(AccessManager, AccessAcquireAll) {
+TEST(AccessManager, AccessAcquireAll)
+{
     tAccessManager accessManager;
 
     const std::vector<std::vector<bool>> acquireTestCases{
@@ -427,20 +433,19 @@ TEST(AccessManager, AccessAcquireAll) {
         {false},
         {true, false},
         {false, true},
-        {true, true, false, true}
-    };
+        {true, true, false, true}};
 
-    for(auto testCase : acquireTestCases) {
+    for (auto testCase : acquireTestCases) {
         tAccessManager::tAccessStack accessStack;
         accessStack.size = 0;
         std::fill(accessStack.val, (accessStack.val + sizeof(accessStack.val)), false);
 
-        for(auto exclusive : testCase) {
+        for (auto exclusive : testCase) {
             accessStack.val[accessStack.size++] = exclusive;
         }
         accessManager.AcquireAll(accessStack);
         EXPECT_EQ(testCase.size(), accessManager.DebugGetRefCount());
-        for(size_t i = 0; i < testCase.size(); ++i) {
+        for (size_t i = 0; i < testCase.size(); ++i) {
             EXPECT_EQ(testCase[i], accessManager.Release());
         }
     }
@@ -454,7 +459,8 @@ TEST(AccessManager, AccessAcquireAll) {
 //     Tests ReleaseAll method without using AcquireAll
 //
 //////////////////////////////////////////////////////////////////////////////
-TEST(AccessManager, AccessReleaseAll) {
+TEST(AccessManager, AccessReleaseAll)
+{
     tAccessManager accessManager;
 
     const std::vector<std::vector<bool>> releaseTestCases{
@@ -463,21 +469,20 @@ TEST(AccessManager, AccessReleaseAll) {
         {false},
         {true, false},
         {false, true},
-        {true, true, false, true}
-    };
+        {true, true, false, true}};
 
-    for(auto testCase : releaseTestCases) {
+    for (auto testCase : releaseTestCases) {
         tAccessManager::tAccessStack accessStack;
 
         // Acquire access according to test case.
-        for(auto exclusive : testCase) {
+        for (auto exclusive : testCase) {
             accessManager.Acquire(exclusive);
         }
         accessStack = accessManager.ReleaseAll();
         EXPECT_EQ(testCase.size(), accessStack.size);
         // The stack should be flipped, check if they are equal
-        for(size_t i = 0; i < accessStack.size; ++i) {
-            EXPECT_EQ(testCase[testCase.size()-i-1], accessStack.val[i]);
+        for (size_t i = 0; i < accessStack.size; ++i) {
+            EXPECT_EQ(testCase[testCase.size() - i - 1], accessStack.val[i]);
         }
         EXPECT_EQ(0UL, accessManager.DebugGetRefCount());
         EXPECT_EQ(0UL, accessManager.DebugGetActiveCount());
@@ -496,7 +501,8 @@ TEST(AccessManager, AccessReleaseAll) {
 //     Tests using Release and Acquire all together
 //
 //////////////////////////////////////////////////////////////////////////////
-TEST(AccessManager, ReleaseAcquireAll) {
+TEST(AccessManager, ReleaseAcquireAll)
+{
     tAccessManager accessManager;
 
     const std::vector<std::vector<bool>> accessTestCases{
@@ -504,22 +510,21 @@ TEST(AccessManager, ReleaseAcquireAll) {
         {false},
         {true, false},
         {false, true},
-        {true, true, false, true}
-    };
+        {true, true, false, true}};
 
-    for(auto testCase : accessTestCases) {
+    for (auto testCase : accessTestCases) {
         tAccessManager::tAccessStack accessStack;
 
         // Acquire access according to test case.
-        for(auto exclusive : testCase) {
+        for (auto exclusive : testCase) {
             accessManager.Acquire(exclusive);
         }
         accessStack = accessManager.ReleaseAll();
         EXPECT_EQ(testCase.size(), accessStack.size);
         accessManager.AcquireAll(accessStack);
         // The stack should be flipped, check if they are equal
-        for(size_t i = testCase.size(); i > 0; --i) {
-            EXPECT_EQ(testCase[i-1], accessManager.Release());
+        for (size_t i = testCase.size(); i > 0; --i) {
+            EXPECT_EQ(testCase[i - 1], accessManager.Release());
         }
     }
 }

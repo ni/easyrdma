@@ -11,8 +11,8 @@
 #include <future>
 #include "tests/utility/Utility.h"
 
-namespace EasyRDMA {
-
+namespace EasyRDMA
+{
 
 //////////////////////////////////////////////////////////////////////////////
 //
@@ -22,7 +22,8 @@ namespace EasyRDMA {
 //     Tests creating a poll
 //
 //////////////////////////////////////////////////////////////////////////////
-TEST(Poll, Sanity) {
+TEST(Poll, Sanity)
+{
     std::unique_ptr<FdPoller> poller;
     RDMA_ASSERT_NO_THROW(poller.reset(new FdPoller()));
 }
@@ -35,7 +36,8 @@ TEST(Poll, Sanity) {
 //     Tests blocking wait on poll
 //
 //////////////////////////////////////////////////////////////////////////////
-TEST(Poll, Blocks) {
+TEST(Poll, Blocks)
+{
     int pipeFds[2];
     ASSERT_NE(pipe(pipeFds), -1);
 
@@ -47,9 +49,9 @@ TEST(Poll, Blocks) {
     };
     auto start = std::chrono::steady_clock::now();
     auto waiter = std::async(std::launch::async, Poll, 50);
-    RDMA_ASSERT_NO_THROW( EXPECT_FALSE(waiter.get()) );
-    ASSERT_GE(std::chrono::steady_clock::now()-start, std::chrono::milliseconds(50));
-    ASSERT_LT(std::chrono::steady_clock::now()-start, std::chrono::milliseconds(100));
+    RDMA_ASSERT_NO_THROW(EXPECT_FALSE(waiter.get()));
+    ASSERT_GE(std::chrono::steady_clock::now() - start, std::chrono::milliseconds(50));
+    ASSERT_LT(std::chrono::steady_clock::now() - start, std::chrono::milliseconds(100));
     close(pipeFds[0]);
     close(pipeFds[1]);
 }
@@ -62,7 +64,8 @@ TEST(Poll, Blocks) {
 //     Tests that si
 //
 //////////////////////////////////////////////////////////////////////////////
-TEST(Poll, PollSucceeds) {
+TEST(Poll, PollSucceeds)
+{
     int pipeFds[2];
     ASSERT_NE(pipe(pipeFds), -1);
 
@@ -74,9 +77,9 @@ TEST(Poll, PollSucceeds) {
     };
     auto start = std::chrono::steady_clock::now();
     auto waiter = std::async(std::launch::async, Poll, 500);
-    (void)! write(pipeFds[1], " ", 1);
-    RDMA_ASSERT_NO_THROW( EXPECT_TRUE(waiter.get()) );
-    ASSERT_LT(std::chrono::steady_clock::now()-start, std::chrono::milliseconds(100));
+    (void)!write(pipeFds[1], " ", 1);
+    RDMA_ASSERT_NO_THROW(EXPECT_TRUE(waiter.get()));
+    ASSERT_LT(std::chrono::steady_clock::now() - start, std::chrono::milliseconds(100));
     close(pipeFds[0]);
     close(pipeFds[1]);
 }
@@ -89,7 +92,8 @@ TEST(Poll, PollSucceeds) {
 //     Tests cancelling a poll
 //
 //////////////////////////////////////////////////////////////////////////////
-TEST(Poll, Cancel) {
+TEST(Poll, Cancel)
+{
     int pipeFds[2];
     ASSERT_NE(pipe(pipeFds), -1);
 
@@ -101,11 +105,11 @@ TEST(Poll, Cancel) {
     };
     auto start = std::chrono::steady_clock::now();
     auto waiter = std::async(std::launch::async, Poll, 500);
-    RDMA_ASSERT_NO_THROW( poller->Cancel() );
-    RDMA_ASSERT_NO_THROW( EXPECT_FALSE(waiter.get()) );
-    ASSERT_LT(std::chrono::steady_clock::now()-start, std::chrono::milliseconds(100));
+    RDMA_ASSERT_NO_THROW(poller->Cancel());
+    RDMA_ASSERT_NO_THROW(EXPECT_FALSE(waiter.get()));
+    ASSERT_LT(std::chrono::steady_clock::now() - start, std::chrono::milliseconds(100));
     close(pipeFds[0]);
     close(pipeFds[1]);
 }
 
-};
+}; // namespace EasyRDMA

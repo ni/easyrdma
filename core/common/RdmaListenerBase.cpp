@@ -3,18 +3,17 @@
 
 #include "RdmaListenerBase.h"
 
-RdmaListenerBase::RdmaListenerBase() {
-
+RdmaListenerBase::RdmaListenerBase()
+{
 }
 
-
-RdmaListenerBase::~RdmaListenerBase() {
-
+RdmaListenerBase::~RdmaListenerBase()
+{
 }
 
-
-void RdmaListenerBase::SetProperty(uint32_t propertyId, const void* value, size_t valueSize) {
-    switch(propertyId) {
+void RdmaListenerBase::SetProperty(uint32_t propertyId, const void* value, size_t valueSize)
+{
+    switch (propertyId) {
         case easyrdma_Property_ConnectionData:
             connectionData = std::vector<uint8_t>(static_cast<const uint8_t*>(value), static_cast<const uint8_t*>(value) + valueSize);
             break;

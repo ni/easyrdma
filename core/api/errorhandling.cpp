@@ -9,7 +9,8 @@
 #include <atomic>
 #include "common/RdmaError.h"
 
-namespace EasyRDMA {
+namespace EasyRDMA
+{
 
 //============================================================================
 //  LastRdmaError - Wraps RdmaError with some additional functionality to
@@ -17,20 +18,23 @@ namespace EasyRDMA {
 //                   -Keeps track of allocated objects so we can sanity-check
 //                    they get destroyed when expected and not leak memory
 //============================================================================
-struct LastRdmaError : public RdmaError {
-    LastRdmaError() {
+struct LastRdmaError : public RdmaError
+{
+    LastRdmaError()
+    {
         ++_allocatedLastRdmaErrors;
     }
-    ~LastRdmaError() {
+    ~LastRdmaError()
+    {
         --_allocatedLastRdmaErrors;
     }
-    static uint64_t GetNumberOfAllocatedLastRdmaErrors() {
+    static uint64_t GetNumberOfAllocatedLastRdmaErrors()
+    {
         return _allocatedLastRdmaErrors;
     }
     static std::atomic<uint64_t> _allocatedLastRdmaErrors;
 };
 std::atomic<uint64_t> LastRdmaError::_allocatedLastRdmaErrors(0);
-
 
 //============================================================================
 //  Thread-local statics
@@ -48,9 +52,10 @@ static thread_local LastRdmaError lastRdmaError;
 //      status  - the incoming status code
 //
 //////////////////////////////////////////////////////////////////////////////
-void PopulateLastRdmaError(const RdmaError& status) {
+void PopulateLastRdmaError(const RdmaError& status)
+{
     lastRdmaError.Clear();
-    if(status.GetCode() != 0) {
+    if (status.GetCode() != 0) {
         lastRdmaError.Assign(status);
     }
 }
@@ -63,10 +68,10 @@ void PopulateLastRdmaError(const RdmaError& status) {
 //      Helper to clear the lastRdmaError
 //
 //////////////////////////////////////////////////////////////////////////////
-void ClearLastRdmaError() {
+void ClearLastRdmaError()
+{
     lastRdmaError.Clear();
 }
-
 
 //////////////////////////////////////////////////////////////////////////////
 //
@@ -79,7 +84,8 @@ void ClearLastRdmaError() {
 //      status  - the incoming status code
 //
 //////////////////////////////////////////////////////////////////////////////
-void GetLastRdmaError(RdmaError& status) {
+void GetLastRdmaError(RdmaError& status)
+{
     status.Assign(lastRdmaError);
 }
 
@@ -96,10 +102,9 @@ void GetLastRdmaError(RdmaError& status) {
 //      of running threads in the process.
 //
 //////////////////////////////////////////////////////////////////////////////
-int64_t DebugGetNumberOfAllocatedLastRdmaErrors() {
+int64_t DebugGetNumberOfAllocatedLastRdmaErrors()
+{
     return LastRdmaError::GetNumberOfAllocatedLastRdmaErrors();
 }
 
-
-}; //EasyRDMA
-
+}; // namespace EasyRDMA
