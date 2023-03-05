@@ -12,7 +12,7 @@
 enum class Direction : uint32_t
 {
     Unknown = 0xFF,
-    Send = 0x00,
+    Send    = 0x00,
     Receive = 0x01
 };
 

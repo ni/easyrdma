@@ -11,8 +11,8 @@
 
 enum tAccessType
 {
-    kAccess_Shared = 0,
-    kAccess_Exclusive = 1,
+    kAccess_Shared      = 0,
+    kAccess_Exclusive   = 1,
 };
 
 //============================================================================

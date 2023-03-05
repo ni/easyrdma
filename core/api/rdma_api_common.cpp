@@ -11,9 +11,9 @@
 
 #ifdef _WIN32
 extern "C" __declspec(dllexport) BOOL WINAPI DllMain(
-    HINSTANCE hinstDLL, // handle to DLL module
-    DWORD fdwReason, // reason for calling function
-    LPVOID lpReserved) // reserved
+    HINSTANCE hinstDLL,  // handle to DLL module
+    DWORD fdwReason,     // reason for calling function
+    LPVOID lpReserved )  // reserved
 {
     switch (fdwReason) {
         case DLL_PROCESS_ATTACH:

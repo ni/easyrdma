@@ -21,11 +21,11 @@ public:
     {
         Trace = -3,
         Debug = -2,
-        Info = -1,
-        Warn = 0,
-        Error = 1,
-        Fatal = 2,
-        Off = 3
+        Info  = -1,
+        Warn  =  0,
+        Error =  1,
+        Fatal =  2,
+        Off   =  3
     };
 
     explicit TestLogger(Verbosity level = Verbosity::Info);
