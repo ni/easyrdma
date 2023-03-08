@@ -6,18 +6,20 @@
 #include "RdmaConnectedSession.h"
 #include "RdmaListenerBase.h"
 
-class RdmaListener : public RdmaListenerBase {
-    public:
-        RdmaListener(const RdmaAddress& localAddress);
-        virtual ~RdmaListener();
+class RdmaListener : public RdmaListenerBase
+{
+public:
+    RdmaListener(const RdmaAddress& localAddress);
+    virtual ~RdmaListener();
 
-        std::shared_ptr<RdmaSession> Accept(Direction direction, int32_t timeoutMs) override;
-        RdmaAddress GetLocalAddress() override;
-        RdmaAddress GetRemoteAddress() override;
-        void Cancel() override;
-    private:
-        AutoRef<IND2Adapter> adapter;
-        AutoRef<IND2Listener> listen;
-        HANDLE adapterFile = nullptr;
-        bool acceptInProgress;
+    std::shared_ptr<RdmaSession> Accept(Direction direction, int32_t timeoutMs) override;
+    RdmaAddress GetLocalAddress() override;
+    RdmaAddress GetRemoteAddress() override;
+    void Cancel() override;
+
+private:
+    AutoRef<IND2Adapter> adapter;
+    AutoRef<IND2Listener> listen;
+    HANDLE adapterFile = nullptr;
+    bool acceptInProgress;
 };

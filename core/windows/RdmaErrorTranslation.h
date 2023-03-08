@@ -4,6 +4,7 @@
 #pragma once
 #include <stdint.h>
 
-namespace RdmaErrorTranslation {
-    int OSErrorToRdmaError(int osError);
+namespace RdmaErrorTranslation
+{
+int OSErrorToRdmaError(int osError);
 }

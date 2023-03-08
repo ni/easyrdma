@@ -16,53 +16,62 @@
 #include "utility/TestEndpoints.h"
 #include "utility/Utility.h"
 
-namespace EasyRDMA {
+namespace EasyRDMA
+{
 
-
-std::string StripPossibleIpv6ScopeId(const std::string& input) {
+std::string StripPossibleIpv6ScopeId(const std::string& input)
+{
     std::regex scopeIdMatch("(%[0-9]+)$");
     std::string strippedAddress = input;
     strippedAddress = std::regex_replace(strippedAddress, scopeIdMatch, "");
     return strippedAddress;
 }
 
-
-class RdmaTest : public RdmaTestBase<::testing::TestWithParam<TestEndpoints>>  {
+class RdmaTest : public RdmaTestBase<::testing::TestWithParam<TestEndpoints>>
+{
 public:
-    RdmaTest() {
+    RdmaTest()
+    {
     }
-    ~RdmaTest() {
+    ~RdmaTest()
+    {
     }
 };
 
-class RdmaTestPermutateConnectionTypes : public RdmaTest {
+class RdmaTestPermutateConnectionTypes : public RdmaTest
+{
 public:
-    RdmaTestPermutateConnectionTypes() {
+    RdmaTestPermutateConnectionTypes()
+    {
     }
-    ~RdmaTestPermutateConnectionTypes() {
+    ~RdmaTestPermutateConnectionTypes()
+    {
     }
 };
 
 INSTANTIATE_TEST_SUITE_P(Devices, RdmaTestPermutateConnectionTypes, ::testing::ValuesIn(GetTestEndpointsAllPermutations()), PrintTestParamName);
 INSTANTIATE_TEST_SUITE_P(Devices, RdmaTest, ::testing::ValuesIn(GetTestEndpointsBasic()), PrintTestParamName);
 
-class RdmaEnumerationTest : public RdmaTestBase<::testing::Test>  {
+class RdmaEnumerationTest : public RdmaTestBase<::testing::Test>
+{
 };
 
-TEST_F(RdmaEnumerationTest, Enumerate) {
+TEST_F(RdmaEnumerationTest, Enumerate)
+{
     auto interfaces = Enumeration::EnumerateInterfaces();
-    for(const auto& iface : interfaces) {
+    for (const auto& iface : interfaces) {
         info() << " -- " << iface;
     }
 }
 
-TEST_F(RdmaEnumerationTest, CorrectNumberOfInterfacesForTest) {
+TEST_F(RdmaEnumerationTest, CorrectNumberOfInterfacesForTest)
+{
     auto interfaces = Enumeration::EnumerateInterfaces();
     std::vector<std::string> ipv4Interfaces;
     std::vector<std::string> ipv6Interfaces;
-    for(const auto& iface : interfaces) {
+    for (const auto& iface : interfaces) {
         RdmaAddress address(iface, 0);
-        switch(address.GetProtocol()) {
+        switch (address.GetProtocol()) {
             case AF_INET:
                 ipv4Interfaces.push_back(iface);
                 break;
@@ -75,13 +84,14 @@ TEST_F(RdmaEnumerationTest, CorrectNumberOfInterfacesForTest) {
     EXPECT_EQ(ipv6Interfaces.size(), 2U) << "Expected exactly 2 IPv6 RDMA ports; Remaining tests may not give expected results";
 };
 
-TEST_F(RdmaEnumerationTest, Enumerate_Filter) {
+TEST_F(RdmaEnumerationTest, Enumerate_Filter)
+{
     auto interfacesAll = Enumeration::EnumerateInterfaces();
     std::vector<std::string> ipv4Interfaces;
     std::vector<std::string> ipv6Interfaces;
-    for(const auto& iface : interfacesAll) {
+    for (const auto& iface : interfacesAll) {
         RdmaAddress address(iface, 0);
-        switch(address.GetProtocol()) {
+        switch (address.GetProtocol()) {
             case AF_INET:
                 ipv4Interfaces.push_back(iface);
                 break;
@@ -102,55 +112,58 @@ TEST_F(RdmaEnumerationTest, Enumerate_Filter) {
     EXPECT_EQ(interfacesFilteredIPv6, ipv6Interfaces);
 }
 
-
-TEST_P(RdmaTestPermutateConnectionTypes, CreateConnector) {
+TEST_P(RdmaTestPermutateConnectionTypes, CreateConnector)
+{
     Session session;
     auto endpoint = GetEndpointAddresses().first;
     RDMA_ASSERT_NO_THROW(session = Session::CreateConnector(endpoint.GetAddrString(), endpoint.GetPort()));
 
-    RDMA_ASSERT_NO_THROW( EXPECT_EQ(session.GetLocalAddress(), endpoint.GetAddrString()));
-    RDMA_ASSERT_NO_THROW( EXPECT_EQ(session.GetLocalPort(), endpoint.GetPort()));
-    RDMA_ASSERT_NO_THROW( EXPECT_EQ(session.GetRemoteAddress(), "*"));
-    RDMA_ASSERT_NO_THROW( EXPECT_EQ(session.GetRemotePort(), 0));
+    RDMA_ASSERT_NO_THROW(EXPECT_EQ(session.GetLocalAddress(), endpoint.GetAddrString()));
+    RDMA_ASSERT_NO_THROW(EXPECT_EQ(session.GetLocalPort(), endpoint.GetPort()));
+    RDMA_ASSERT_NO_THROW(EXPECT_EQ(session.GetRemoteAddress(), "*"));
+    RDMA_ASSERT_NO_THROW(EXPECT_EQ(session.GetRemotePort(), 0));
 
     RDMA_ASSERT_NO_THROW(session.Close());
 }
 
-TEST_P(RdmaTestPermutateConnectionTypes, CreateListener) {
+TEST_P(RdmaTestPermutateConnectionTypes, CreateListener)
+{
     Session session;
     auto endpoint = GetEndpointAddresses().first;
     RDMA_ASSERT_NO_THROW(session = Session::CreateListener(endpoint.GetAddrString(), endpoint.GetPort()));
 
-    RDMA_ASSERT_NO_THROW( EXPECT_EQ(session.GetLocalAddress(), endpoint.GetAddrString()));
-    RDMA_ASSERT_NO_THROW( EXPECT_EQ(session.GetLocalPort(), endpoint.GetPort()));
-    RDMA_ASSERT_NO_THROW( EXPECT_EQ(session.GetRemoteAddress(), "*"));
-    RDMA_ASSERT_NO_THROW( EXPECT_EQ(session.GetRemotePort(), 0));
+    RDMA_ASSERT_NO_THROW(EXPECT_EQ(session.GetLocalAddress(), endpoint.GetAddrString()));
+    RDMA_ASSERT_NO_THROW(EXPECT_EQ(session.GetLocalPort(), endpoint.GetPort()));
+    RDMA_ASSERT_NO_THROW(EXPECT_EQ(session.GetRemoteAddress(), "*"));
+    RDMA_ASSERT_NO_THROW(EXPECT_EQ(session.GetRemotePort(), 0));
 
     RDMA_ASSERT_NO_THROW(session.Close());
 }
 
-TEST_P(RdmaTestPermutateConnectionTypes, CreateListener_ReusePort) {
+TEST_P(RdmaTestPermutateConnectionTypes, CreateListener_ReusePort)
+{
     Session session, session2;
     auto endpoint = GetEndpointAddresses().first;
     RDMA_ASSERT_NO_THROW(session = Session::CreateListener(endpoint.GetAddrString(), 10000));
     RDMA_ASSERT_THROW_WITHCODE(session2 = Session::CreateListener(endpoint.GetAddrString(), 10000), easyrdma_Error_AddressInUse);
 }
 
-TEST_P(RdmaTestPermutateConnectionTypes, CreateConnector_ReusePort) {
+TEST_P(RdmaTestPermutateConnectionTypes, CreateConnector_ReusePort)
+{
     Session session, session2;
     auto endpoint = GetEndpointAddresses().first;
     RDMA_ASSERT_NO_THROW(session = Session::CreateConnector(endpoint.GetAddrString(), 10000));
-    #ifdef _WIN32
-        // Oddly, the Mellanox provider seems to not care if we create two connectors sharing the
-        // same address/port
-        RDMA_ASSERT_NO_THROW(session2 = Session::CreateConnector(endpoint.GetAddrString(), 10000));
-    #else
-        RDMA_ASSERT_THROW_WITHCODE(session2 = Session::CreateConnector(endpoint.GetAddrString(), 10000), easyrdma_Error_AddressInUse);
-    #endif
+#ifdef _WIN32
+    // Oddly, the Mellanox provider seems to not care if we create two connectors sharing the
+    // same address/port
+    RDMA_ASSERT_NO_THROW(session2 = Session::CreateConnector(endpoint.GetAddrString(), 10000));
+#else
+    RDMA_ASSERT_THROW_WITHCODE(session2 = Session::CreateConnector(endpoint.GetAddrString(), 10000), easyrdma_Error_AddressInUse);
+#endif
 }
 
-
-TEST_P(RdmaTestPermutateConnectionTypes, Connect) {
+TEST_P(RdmaTestPermutateConnectionTypes, Connect)
+{
     auto endpoints = GetEndpointAddresses();
     RdmaAddress localAddressListener = endpoints.first;
     RdmaAddress localAddressConnector = endpoints.second;
@@ -162,28 +175,29 @@ TEST_P(RdmaTestPermutateConnectionTypes, Connect) {
 
     accept = std::async(std::launch::async, [&]() {
         return sessionListener.Accept(easyrdma_Direction_Receive);
-    } );
+    });
     RDMA_ASSERT_NO_THROW(sessionConnector.Connect(easyrdma_Direction_Send, localAddressListener.GetAddrString(), localAddressListener.GetPort()));
     Session sessionAccepted;
     RDMA_ASSERT_NO_THROW(sessionAccepted = std::move(accept.get()));
 
     // Strip any scope Ids because they can be inconsistently present depending on how we are getting them
-    RDMA_ASSERT_NO_THROW( EXPECT_EQ(StripPossibleIpv6ScopeId(sessionConnector.GetLocalAddress()), StripPossibleIpv6ScopeId(localAddressConnector.GetAddrString())));
-    RDMA_ASSERT_NO_THROW( EXPECT_EQ(sessionConnector.GetLocalPort(), localAddressConnector.GetPort()));
-    RDMA_ASSERT_NO_THROW( EXPECT_EQ(StripPossibleIpv6ScopeId(sessionConnector.GetRemoteAddress()), StripPossibleIpv6ScopeId(localAddressListener.GetAddrString())));
-    RDMA_ASSERT_NO_THROW( EXPECT_EQ(sessionConnector.GetRemotePort(), localAddressListener.GetPort()));
+    RDMA_ASSERT_NO_THROW(EXPECT_EQ(StripPossibleIpv6ScopeId(sessionConnector.GetLocalAddress()), StripPossibleIpv6ScopeId(localAddressConnector.GetAddrString())));
+    RDMA_ASSERT_NO_THROW(EXPECT_EQ(sessionConnector.GetLocalPort(), localAddressConnector.GetPort()));
+    RDMA_ASSERT_NO_THROW(EXPECT_EQ(StripPossibleIpv6ScopeId(sessionConnector.GetRemoteAddress()), StripPossibleIpv6ScopeId(localAddressListener.GetAddrString())));
+    RDMA_ASSERT_NO_THROW(EXPECT_EQ(sessionConnector.GetRemotePort(), localAddressListener.GetPort()));
 
-    RDMA_ASSERT_NO_THROW( EXPECT_EQ(StripPossibleIpv6ScopeId(sessionAccepted.GetLocalAddress()), StripPossibleIpv6ScopeId(localAddressListener.GetAddrString())));
-    RDMA_ASSERT_NO_THROW( EXPECT_EQ(sessionAccepted.GetLocalPort(), localAddressListener.GetPort()));
-    RDMA_ASSERT_NO_THROW( EXPECT_EQ(StripPossibleIpv6ScopeId(sessionAccepted.GetRemoteAddress()), StripPossibleIpv6ScopeId(localAddressConnector.GetAddrString())));
-    RDMA_ASSERT_NO_THROW( EXPECT_EQ(sessionAccepted.GetRemotePort(), localAddressConnector.GetPort()));
+    RDMA_ASSERT_NO_THROW(EXPECT_EQ(StripPossibleIpv6ScopeId(sessionAccepted.GetLocalAddress()), StripPossibleIpv6ScopeId(localAddressListener.GetAddrString())));
+    RDMA_ASSERT_NO_THROW(EXPECT_EQ(sessionAccepted.GetLocalPort(), localAddressListener.GetPort()));
+    RDMA_ASSERT_NO_THROW(EXPECT_EQ(StripPossibleIpv6ScopeId(sessionAccepted.GetRemoteAddress()), StripPossibleIpv6ScopeId(localAddressConnector.GetAddrString())));
+    RDMA_ASSERT_NO_THROW(EXPECT_EQ(sessionAccepted.GetRemotePort(), localAddressConnector.GetPort()));
 
     RDMA_ASSERT_NO_THROW(sessionConnector.Close());
     RDMA_ASSERT_NO_THROW(sessionListener.Close());
     RDMA_ASSERT_NO_THROW(sessionAccepted.Close());
 }
 
-TEST_P(RdmaTestPermutateConnectionTypes, ConnectDisconnect) {
+TEST_P(RdmaTestPermutateConnectionTypes, ConnectDisconnect)
+{
     ConnectionPair connections;
     RDMA_ASSERT_NO_THROW(connections = GetLoopbackConnection());
 
@@ -193,14 +207,15 @@ TEST_P(RdmaTestPermutateConnectionTypes, ConnectDisconnect) {
     RDMA_ASSERT_NO_THROW(connections.sender.Close());
     bool connected = true;
     auto started = std::chrono::steady_clock::now();
-    while(connected) {
+    while (connected) {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
         RDMA_ASSERT_NO_THROW(connected = connections.receiver.GetPropertyBool(easyrdma_Property_Connected));
-        ASSERT_LE(std::chrono::steady_clock::now()-started, std::chrono::milliseconds(500));
+        ASSERT_LE(std::chrono::steady_clock::now() - started, std::chrono::milliseconds(500));
     }
 }
 
-TEST_P(RdmaTest, GetPropertyErrorWriteOnly) {
+TEST_P(RdmaTest, GetPropertyErrorWriteOnly)
+{
     ConnectionPair connections;
     RDMA_ASSERT_NO_THROW(connections = GetLoopbackConnection());
     size_t bufferSize = 100;
@@ -208,21 +223,24 @@ TEST_P(RdmaTest, GetPropertyErrorWriteOnly) {
     RDMA_ASSERT_THROW_WITHCODE(connections.sender.GetProperty(easyrdma_Property_ConnectionData, buffer.data(), &bufferSize), easyrdma_Error_WriteOnlyProperty);
 }
 
-TEST_P(RdmaTest, SetPropertyErrorReadOnly) {
+TEST_P(RdmaTest, SetPropertyErrorReadOnly)
+{
     ConnectionPair connections;
     RDMA_ASSERT_NO_THROW(connections = GetLoopbackConnection());
     uint64_t queuedBuffers = 1;
     RDMA_ASSERT_THROW_WITHCODE(connections.sender.SetProperty(easyrdma_Property_QueuedBuffers, &queuedBuffers, sizeof(queuedBuffers)), easyrdma_Error_ReadOnlyProperty);
 }
 
-TEST_P(RdmaTest, ConnectLoop) {
-    for(int iteration = 0; iteration < 50; ++iteration) {
+TEST_P(RdmaTest, ConnectLoop)
+{
+    for (int iteration = 0; iteration < 50; ++iteration) {
         ConnectionPair connections;
         RDMA_ASSERT_NO_THROW(connections = GetLoopbackConnection());
     }
 }
 
-TEST_P(RdmaTest, ConnectMultipleToSingleListener) {
+TEST_P(RdmaTest, ConnectMultipleToSingleListener)
+{
     RdmaAddress localAddressListener = GetEndpointAddresses().first;
     RdmaAddress localAddressConnector = GetEndpointAddresses().second;
 
@@ -231,16 +249,16 @@ TEST_P(RdmaTest, ConnectMultipleToSingleListener) {
     RDMA_ASSERT_NO_THROW(sessionConnectorA = Session::CreateConnector(localAddressConnector.GetAddrString(), 0));
     RDMA_ASSERT_NO_THROW(sessionConnectorB = Session::CreateConnector(localAddressConnector.GetAddrString(), 0));
 
-    auto receiverA = std::async(std::launch::async, [&]() { return sessionListener.Accept(easyrdma_Direction_Receive); } );
+    auto receiverA = std::async(std::launch::async, [&]() { return sessionListener.Accept(easyrdma_Direction_Receive); });
     RDMA_ASSERT_NO_THROW(sessionConnectorA.Connect(easyrdma_Direction_Send, localAddressListener.GetAddrString(), localAddressListener.GetPort()));
     RDMA_ASSERT_NO_THROW(receiverA.get());
-    auto receiverB = std::async(std::launch::async, [&]() { return sessionListener.Accept(easyrdma_Direction_Receive); } );
+    auto receiverB = std::async(std::launch::async, [&]() { return sessionListener.Accept(easyrdma_Direction_Receive); });
     RDMA_ASSERT_NO_THROW(sessionConnectorB.Connect(easyrdma_Direction_Send, localAddressListener.GetAddrString(), localAddressListener.GetPort()));
     RDMA_ASSERT_NO_THROW(receiverB.get());
 }
 
-
-TEST_P(RdmaTest, Connect_Cancel_WithClose) {
+TEST_P(RdmaTest, Connect_Cancel_WithClose)
+{
     auto endpoints = GetEndpointAddresses();
     RdmaAddress localAddressListener = endpoints.first;
     RdmaAddress localAddressConnector = endpoints.second;
@@ -259,13 +277,14 @@ TEST_P(RdmaTest, Connect_Cancel_WithClose) {
     auto cancelStart = std::chrono::steady_clock::now();
     RDMA_ASSERT_NO_THROW(sessionConnector.Close());
     RDMA_ASSERT_THROW_WITHCODE(connect.get(), easyrdma_Error_OperationCancelled);
-    auto cancelDuration = std::chrono::steady_clock::now()-cancelStart;
+    auto cancelDuration = std::chrono::steady_clock::now() - cancelStart;
     EXPECT_LE(cancelDuration, std::chrono::milliseconds(200));
 
     RDMA_ASSERT_NO_THROW(sessionListener.Close());
 }
 
-TEST_P(RdmaTest, Connect_Cancel_WithAbort) {
+TEST_P(RdmaTest, Connect_Cancel_WithAbort)
+{
     auto endpoints = GetEndpointAddresses();
     RdmaAddress localAddressListener = endpoints.first;
     RdmaAddress localAddressConnector = endpoints.second;
@@ -288,14 +307,15 @@ TEST_P(RdmaTest, Connect_Cancel_WithAbort) {
     RDMA_ASSERT_NO_THROW(sessionConnector.Abort());
 
     RDMA_ASSERT_THROW_WITHCODE(connect.get(), easyrdma_Error_OperationCancelled);
-    auto cancelDuration = std::chrono::steady_clock::now()-cancelStart;
+    auto cancelDuration = std::chrono::steady_clock::now() - cancelStart;
     EXPECT_LE(cancelDuration, std::chrono::milliseconds(200));
 
     RDMA_ASSERT_NO_THROW(sessionListener.Close());
     RDMA_ASSERT_NO_THROW(sessionConnector.Close());
 }
 
-TEST_P(RdmaTest, Accept_Cancel_WithClose) {
+TEST_P(RdmaTest, Accept_Cancel_WithClose)
+{
     auto endpoints = GetEndpointAddresses();
     RdmaAddress localAddressListener = endpoints.first;
 
@@ -304,7 +324,7 @@ TEST_P(RdmaTest, Accept_Cancel_WithClose) {
 
     auto accept = std::async(std::launch::async, [&]() {
         return sessionListener.Accept(easyrdma_Direction_Receive, 5000);
-    } );
+    });
     // Give time for async Accept thread to start
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
@@ -312,11 +332,12 @@ TEST_P(RdmaTest, Accept_Cancel_WithClose) {
     auto cancelStart = std::chrono::steady_clock::now();
     RDMA_ASSERT_NO_THROW(sessionListener.Close());
     RDMA_ASSERT_THROW_WITHCODE(accept.get(), easyrdma_Error_OperationCancelled);
-    auto cancelDuration = std::chrono::steady_clock::now()-cancelStart;
+    auto cancelDuration = std::chrono::steady_clock::now() - cancelStart;
     EXPECT_LE(cancelDuration, std::chrono::milliseconds(200));
 }
 
-TEST_P(RdmaTest, Accept_Cancel_WithAbort) {
+TEST_P(RdmaTest, Accept_Cancel_WithAbort)
+{
     auto endpoints = GetEndpointAddresses();
     RdmaAddress localAddressListener = endpoints.first;
 
@@ -325,7 +346,7 @@ TEST_P(RdmaTest, Accept_Cancel_WithAbort) {
 
     auto accept = std::async(std::launch::async, [&]() {
         return sessionListener.Accept(easyrdma_Direction_Receive, 5000);
-    } );
+    });
     // Give time for async Accept thread to start
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
@@ -337,13 +358,14 @@ TEST_P(RdmaTest, Accept_Cancel_WithAbort) {
     RDMA_ASSERT_NO_THROW(sessionListener.Abort());
 
     RDMA_ASSERT_THROW_WITHCODE(accept.get(), easyrdma_Error_OperationCancelled);
-    auto cancelDuration = std::chrono::steady_clock::now()-cancelStart;
+    auto cancelDuration = std::chrono::steady_clock::now() - cancelStart;
     EXPECT_LE(cancelDuration, std::chrono::milliseconds(200));
 
     RDMA_ASSERT_NO_THROW(sessionListener.Close());
 }
 
-TEST_P(RdmaTest, Accept_AgainAfterTimeout) {
+TEST_P(RdmaTest, Accept_AgainAfterTimeout)
+{
     auto endpoints = GetEndpointAddresses();
     RdmaAddress localAddressListener = endpoints.first;
     RdmaAddress localAddressConnector = endpoints.second;
@@ -360,8 +382,8 @@ TEST_P(RdmaTest, Accept_AgainAfterTimeout) {
     RDMA_ASSERT_NO_THROW(connect.get());
 }
 
-
-TEST_P(RdmaTest, Connect_Timeout) {
+TEST_P(RdmaTest, Connect_Timeout)
+{
     auto endpoints = GetEndpointAddresses();
     RdmaAddress localAddressListener = endpoints.first;
     RdmaAddress localAddressConnector = endpoints.second;
@@ -379,8 +401,8 @@ TEST_P(RdmaTest, Connect_Timeout) {
     RDMA_ASSERT_THROW_WITHCODE(connect.get(), easyrdma_Error_Timeout);
 }
 
-TEST_P(RdmaTest, Connect_ErrorsWhenCalledAgainAfterTimeout) {
-
+TEST_P(RdmaTest, Connect_ErrorsWhenCalledAgainAfterTimeout)
+{
     // This test checks the behavior when we call connect on a same session again after
     // we failed due to a timeout. Ideally this seems like it should work, but on the Mellanox
     // drivers on both Windows and Linux, once you have attempted a connect attempt, using the same
@@ -413,19 +435,20 @@ TEST_P(RdmaTest, Connect_ErrorsWhenCalledAgainAfterTimeout) {
         sessionConnector.Connect(easyrdma_Direction_Send, localAddressListener.GetAddrString(), localAddressListener.GetPort(), 5000);
     });
 
-    // Currently Windows and Linux fail differently when in the edge case of calling connect again. For now we'll just
-    // expect different errors. We'd need some special code in Linux to determine if the invalid argument is due to
-    // calling resolve_addr a second time vs some other error in that path.
-    #ifdef _WIN32
-        int errorCode = easyrdma_Error_AlreadyConnected;
-    #else
-        int errorCode = easyrdma_Error_InvalidArgument;
-    #endif
+// Currently Windows and Linux fail differently when in the edge case of calling connect again. For now we'll just
+// expect different errors. We'd need some special code in Linux to determine if the invalid argument is due to
+// calling resolve_addr a second time vs some other error in that path.
+#ifdef _WIN32
+    int errorCode = easyrdma_Error_AlreadyConnected;
+#else
+    int errorCode = easyrdma_Error_InvalidArgument;
+#endif
     RDMA_EXPECT_THROW_WITHCODE(connect.get(), errorCode);
     RDMA_EXPECT_THROW_WITHCODE(accept.get(), easyrdma_Error_Timeout);
 }
 
-TEST_P(RdmaTest, Connect_ErrorsWhenCalledAgainAfterConnected) {
+TEST_P(RdmaTest, Connect_ErrorsWhenCalledAgainAfterConnected)
+{
     auto endpoints = GetEndpointAddresses();
     RdmaAddress localAddressListener = endpoints.first;
     RdmaAddress localAddressConnector = endpoints.second;
@@ -437,7 +460,7 @@ TEST_P(RdmaTest, Connect_ErrorsWhenCalledAgainAfterConnected) {
 
     accept = std::async(std::launch::async, [&]() {
         return sessionListener.Accept(easyrdma_Direction_Receive);
-    } );
+    });
     RDMA_ASSERT_NO_THROW(sessionConnector.Connect(easyrdma_Direction_Send, localAddressListener.GetAddrString(), localAddressListener.GetPort()));
     Session sessionAccepted;
     RDMA_ASSERT_NO_THROW(sessionAccepted = std::move(accept.get()));
@@ -446,7 +469,8 @@ TEST_P(RdmaTest, Connect_ErrorsWhenCalledAgainAfterConnected) {
     RDMA_EXPECT_THROW_WITHCODE(sessionConnector.Connect(easyrdma_Direction_Send, localAddressListener.GetAddrString(), localAddressListener.GetPort()), easyrdma_Error_AlreadyConnected);
 }
 
-TEST_P(RdmaTest, Accept_Timeout) {
+TEST_P(RdmaTest, Accept_Timeout)
+{
     auto endpoints = GetEndpointAddresses();
     RdmaAddress localAddressListener = endpoints.first;
 
@@ -455,67 +479,73 @@ TEST_P(RdmaTest, Accept_Timeout) {
 
     auto accept = std::async(std::launch::async, [&]() {
         return sessionListener.Accept(easyrdma_Direction_Receive, 50);
-    } );
+    });
 
     EXPECT_EQ(accept.wait_for(std::chrono::milliseconds(1000)), std::future_status::ready);
     sessionListener.Close();
     RDMA_ASSERT_THROW_WITHCODE(accept.get(), easyrdma_Error_Timeout);
 }
 
-
-TEST_P(RdmaTest, ConfigureBuffers) {
+TEST_P(RdmaTest, ConfigureBuffers)
+{
     ConnectionPair connections;
     RDMA_ASSERT_NO_THROW(connections = GetLoopbackConnection());
-    RDMA_ASSERT_NO_THROW(connections.sender.ConfigureBuffers(1024*1024, 20));
-    RDMA_ASSERT_NO_THROW(connections.receiver.ConfigureBuffers(4096*1024, 50));
+    RDMA_ASSERT_NO_THROW(connections.sender.ConfigureBuffers(1024 * 1024, 20));
+    RDMA_ASSERT_NO_THROW(connections.receiver.ConfigureBuffers(4096 * 1024, 50));
 }
 
-TEST_P(RdmaTest, ConfigureBuffers_SenderFirst) {
+TEST_P(RdmaTest, ConfigureBuffers_SenderFirst)
+{
     ConnectionPair connections;
     RDMA_ASSERT_NO_THROW(connections = GetLoopbackConnection());
-    RDMA_ASSERT_NO_THROW(connections.sender.ConfigureBuffers(1024*1024, 20));
+    RDMA_ASSERT_NO_THROW(connections.sender.ConfigureBuffers(1024 * 1024, 20));
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    RDMA_ASSERT_NO_THROW(connections.receiver.ConfigureBuffers(4096*1024, 50));
+    RDMA_ASSERT_NO_THROW(connections.receiver.ConfigureBuffers(4096 * 1024, 50));
 }
 
-TEST_P(RdmaTest, ConfigureBuffers_ReceiverFirst) {
+TEST_P(RdmaTest, ConfigureBuffers_ReceiverFirst)
+{
     ConnectionPair connections;
     RDMA_ASSERT_NO_THROW(connections = GetLoopbackConnection());
-    RDMA_ASSERT_NO_THROW(connections.receiver.ConfigureBuffers(4096*1024, 50));
+    RDMA_ASSERT_NO_THROW(connections.receiver.ConfigureBuffers(4096 * 1024, 50));
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    RDMA_ASSERT_NO_THROW(connections.sender.ConfigureBuffers(1024*1024, 20));
+    RDMA_ASSERT_NO_THROW(connections.sender.ConfigureBuffers(1024 * 1024, 20));
 }
 
-TEST_P(RdmaTest, ConfigureExternalBuffer_Sender) {
+TEST_P(RdmaTest, ConfigureExternalBuffer_Sender)
+{
     ConnectionPair connections;
-    std::vector<uint8_t> sendBuffer(4096*1024);
+    std::vector<uint8_t> sendBuffer(4096 * 1024);
     RDMA_ASSERT_NO_THROW(connections = GetLoopbackConnection());
     RDMA_ASSERT_NO_THROW(connections.sender.ConfigureExternalBuffer(sendBuffer.data(), sendBuffer.size(), 20));
     RDMA_ASSERT_NO_THROW(connections.Close()); // Explicitly close the sessions before destroying the external buffers
 }
 
-TEST_P(RdmaTest, ConfigureExternalBuffer_Receiver) {
+TEST_P(RdmaTest, ConfigureExternalBuffer_Receiver)
+{
     ConnectionPair connections;
-    std::vector<uint8_t> receiveBuffer(4096*1024);
+    std::vector<uint8_t> receiveBuffer(4096 * 1024);
     RDMA_ASSERT_NO_THROW(connections = GetLoopbackConnection());
     RDMA_ASSERT_NO_THROW(connections.receiver.ConfigureExternalBuffer(receiveBuffer.data(), receiveBuffer.size(), 50));
     RDMA_ASSERT_NO_THROW(connections.Close()); // Explicitly close the sessions before destroying the external buffers
 }
 
-TEST_P(RdmaTest, ConfigureBuffers_Twice) {
+TEST_P(RdmaTest, ConfigureBuffers_Twice)
+{
     ConnectionPair connections;
     RDMA_ASSERT_NO_THROW(connections = GetLoopbackConnection());
-    RDMA_ASSERT_NO_THROW(connections.sender.ConfigureBuffers(1024*1024, 20));
-    RDMA_EXPECT_THROW_WITHCODE(connections.sender.ConfigureBuffers(1024*1024, 20), easyrdma_Error_AlreadyConfigured);
+    RDMA_ASSERT_NO_THROW(connections.sender.ConfigureBuffers(1024 * 1024, 20));
+    RDMA_EXPECT_THROW_WITHCODE(connections.sender.ConfigureBuffers(1024 * 1024, 20), easyrdma_Error_AlreadyConfigured);
 
-    RDMA_ASSERT_NO_THROW(connections.receiver.ConfigureBuffers(4096*1024, 50));
-    RDMA_EXPECT_THROW_WITHCODE(connections.receiver.ConfigureBuffers(4096*1024, 50), easyrdma_Error_AlreadyConfigured);
+    RDMA_ASSERT_NO_THROW(connections.receiver.ConfigureBuffers(4096 * 1024, 50));
+    RDMA_EXPECT_THROW_WITHCODE(connections.receiver.ConfigureBuffers(4096 * 1024, 50), easyrdma_Error_AlreadyConfigured);
 }
 
-TEST_P(RdmaTest, ConfigureExternalBuffer_Twice) {
+TEST_P(RdmaTest, ConfigureExternalBuffer_Twice)
+{
     ConnectionPair connections;
-    std::vector<uint8_t> sendBuffer(1024*1024);
-    std::vector<uint8_t> receiveBuffer(4096*1024);
+    std::vector<uint8_t> sendBuffer(1024 * 1024);
+    std::vector<uint8_t> receiveBuffer(4096 * 1024);
     RDMA_ASSERT_NO_THROW(connections = GetLoopbackConnection());
     RDMA_ASSERT_NO_THROW(connections.sender.ConfigureExternalBuffer(sendBuffer.data(), sendBuffer.size(), 20));
     RDMA_EXPECT_THROW_WITHCODE(connections.sender.ConfigureExternalBuffer(sendBuffer.data(), sendBuffer.size(), 20), easyrdma_Error_AlreadyConfigured);
@@ -524,8 +554,8 @@ TEST_P(RdmaTest, ConfigureExternalBuffer_Twice) {
     RDMA_ASSERT_NO_THROW(connections.Close()); // Explicitly close the sessions before destroying the external buffers
 }
 
-
-TEST_P(RdmaTest, Configure_ConnectorErrors) {
+TEST_P(RdmaTest, Configure_ConnectorErrors)
+{
     Session sessionConnector;
     auto endpoints = GetEndpointAddresses();
     RdmaAddress localAddressConnector = endpoints.first;
@@ -533,7 +563,8 @@ TEST_P(RdmaTest, Configure_ConnectorErrors) {
     RDMA_ASSERT_THROW_WITHCODE(sessionConnector.ConfigureBuffers(1024, 10), easyrdma_Error_NotConnected);
 }
 
-TEST_P(RdmaTest, Configure_ListenerErrors) {
+TEST_P(RdmaTest, Configure_ListenerErrors)
+{
     Session sessionListener;
     auto endpoints = GetEndpointAddresses();
     RdmaAddress localAddressListener = endpoints.first;
@@ -541,7 +572,8 @@ TEST_P(RdmaTest, Configure_ListenerErrors) {
     RDMA_ASSERT_THROW_WITHCODE(sessionListener.ConfigureBuffers(1024, 10), easyrdma_Error_InvalidOperation);
 }
 
-TEST_P(RdmaTest, SendReceive) {
+TEST_P(RdmaTest, SendReceive)
+{
     ConnectionPair connections;
     RDMA_ASSERT_NO_THROW(connections = GetLoopbackConnection());
     const size_t bufferSize = 4096;
@@ -549,7 +581,7 @@ TEST_P(RdmaTest, SendReceive) {
     RDMA_ASSERT_NO_THROW(connections.receiver.ConfigureBuffers(bufferSize, 1));
 
     std::vector<uint8_t> sendBuffer(bufferSize);
-    for(size_t i=0; i < bufferSize; ++i) {
+    for (size_t i = 0; i < bufferSize; ++i) {
         sendBuffer[i] = static_cast<uint8_t>(i);
     }
     std::vector<uint8_t> receiveBuffer;
@@ -559,8 +591,8 @@ TEST_P(RdmaTest, SendReceive) {
     EXPECT_EQ(sendBuffer, receiveBuffer);
 }
 
-
-TEST_P(RdmaTest, SendWithCallback) {
+TEST_P(RdmaTest, SendWithCallback)
+{
     ConnectionPair connections;
     RDMA_ASSERT_NO_THROW(connections = GetLoopbackConnection());
     const size_t bufferSize = 1024;
@@ -570,19 +602,19 @@ TEST_P(RdmaTest, SendWithCallback) {
 
     BufferCompletion completedTransfers[transferCount];
 
-    for(size_t i = 0; i < transferCount; ++i) {
+    for (size_t i = 0; i < transferCount; ++i) {
         std::vector<uint8_t> sendBuffer(bufferSize, static_cast<uint8_t>(i));
         RDMA_ASSERT_NO_THROW(connections.sender.SendWithCallback(sendBuffer, &completedTransfers[i], reinterpret_cast<void*>(static_cast<uintptr_t>(i))));
     }
 
-    for(size_t i = 0; i < transferCount; ++i) {
+    for (size_t i = 0; i < transferCount; ++i) {
         RDMA_ASSERT_NO_THROW(completedTransfers[i].WaitForCompletion(500)) << "Transfer: " << i;
         EXPECT_EQ(reinterpret_cast<uintptr_t>(completedTransfers[i].GetContext()), i);
     }
 }
 
-
-TEST_P(RdmaTest, SendReceive_Partial) {
+TEST_P(RdmaTest, SendReceive_Partial)
+{
     ConnectionPair connections;
     RDMA_ASSERT_NO_THROW(connections = GetLoopbackConnection());
     const size_t bufferSize = 100;
@@ -591,10 +623,10 @@ TEST_P(RdmaTest, SendReceive_Partial) {
 
     // Go through the buffer sizes twice so that we ensure we re-use buffers with smaller sizes
     // than they previously held
-    for(size_t i = 0; i < bufferSize*2; ++i) {
+    for (size_t i = 0; i < bufferSize * 2; ++i) {
         size_t partialSize = i % bufferSize;
         std::vector<uint8_t> sendBuffer(partialSize);
-        for(auto& byte : sendBuffer) {
+        for (auto& byte : sendBuffer) {
             byte = static_cast<uint8_t>(rand());
         }
         std::vector<uint8_t> receiveBuffer;
@@ -608,7 +640,8 @@ TEST_P(RdmaTest, SendReceive_Partial) {
     }
 }
 
-TEST_P(RdmaTest, Send_Partial_TooLarge) {
+TEST_P(RdmaTest, Send_Partial_TooLarge)
+{
     ConnectionPair connections;
     RDMA_ASSERT_NO_THROW(connections = GetLoopbackConnection());
     const size_t bufferSize = 100;
@@ -618,12 +651,13 @@ TEST_P(RdmaTest, Send_Partial_TooLarge) {
     BufferRegion sendRegion;
     RDMA_ASSERT_NO_THROW(sendRegion = connections.sender.GetSendRegion());
     ASSERT_EQ(sendRegion.bufferSize, bufferSize);
-    sendRegion.usedSize = bufferSize+1;
+    sendRegion.usedSize = bufferSize + 1;
     RDMA_ASSERT_THROW_WITHCODE(connections.sender.QueueRegion(sendRegion), easyrdma_Error_InvalidSize);
     RDMA_ASSERT_THROW_WITHCODE(connections.receiver.Receive(10), easyrdma_Error_Timeout);
 }
 
-TEST_P(RdmaTest, FlowControl_Send_TooLarge) {
+TEST_P(RdmaTest, FlowControl_Send_TooLarge)
+{
     ConnectionPair connections;
     RDMA_ASSERT_NO_THROW(connections = GetLoopbackConnection());
     const size_t SendbufferSize = 100;
@@ -642,15 +676,16 @@ TEST_P(RdmaTest, FlowControl_Send_TooLarge) {
     RDMA_ASSERT_THROW_WITHCODE(connections.receiver.Receive(10), easyrdma_Error_Timeout);
 }
 
-TEST_P(RdmaTest, ExternalMemorySend) {
+TEST_P(RdmaTest, ExternalMemorySend)
+{
     ConnectionPair connections;
     RDMA_ASSERT_NO_THROW(connections = GetLoopbackConnection());
 
     const int bufferCount = 10;
     const int transferCount = 5;
-    const size_t eachBufferLen = 1024*1024;
-    std::vector<uint8_t> largeSendBuffer(bufferCount*eachBufferLen);
-    for(auto& b : largeSendBuffer) {
+    const size_t eachBufferLen = 1024 * 1024;
+    std::vector<uint8_t> largeSendBuffer(bufferCount * eachBufferLen);
+    for (auto& b : largeSendBuffer) {
         b = static_cast<uint8_t>(rand());
     }
 
@@ -658,16 +693,16 @@ TEST_P(RdmaTest, ExternalMemorySend) {
     RDMA_ASSERT_NO_THROW(connections.receiver.ConfigureBuffers(eachBufferLen, bufferCount));
 
     auto sender = std::async(std::launch::async, [&]() {
-        for(int i = 0; i < transferCount; ++i) {
-            RDMA_ASSERT_NO_THROW(connections.sender.QueueExternalBuffer(largeSendBuffer.data() + (i % bufferCount)*eachBufferLen, eachBufferLen));
+        for (int i = 0; i < transferCount; ++i) {
+            RDMA_ASSERT_NO_THROW(connections.sender.QueueExternalBuffer(largeSendBuffer.data() + (i % bufferCount) * eachBufferLen, eachBufferLen));
         }
     });
     auto receiver = std::async(std::launch::async, [&]() {
-        for(int i = 0; i < transferCount; ++i) {
+        for (int i = 0; i < transferCount; ++i) {
             std::vector<uint8_t> receiveBuffer;
             RDMA_ASSERT_NO_THROW(receiveBuffer = connections.receiver.Receive());
             ASSERT_EQ(receiveBuffer.size(), eachBufferLen);
-            EXPECT_EQ(memcmp(receiveBuffer.data(), largeSendBuffer.data() + (i % bufferCount)*eachBufferLen, eachBufferLen), 0);
+            EXPECT_EQ(memcmp(receiveBuffer.data(), largeSendBuffer.data() + (i % bufferCount) * eachBufferLen, eachBufferLen), 0);
         }
     });
     RDMA_ASSERT_NO_THROW(sender.get());
@@ -675,7 +710,8 @@ TEST_P(RdmaTest, ExternalMemorySend) {
     RDMA_ASSERT_NO_THROW(connections.Close()); // Explicitly close the sessions before destroying the external buffer
 }
 
-TEST_P(RdmaTest, Send_Partial_ExternalMemory) {
+TEST_P(RdmaTest, Send_Partial_ExternalMemory)
+{
     const size_t maxTransferSize = 100;
     std::vector<uint8_t> sendBuffer(maxTransferSize);
     ConnectionPair connections;
@@ -686,9 +722,9 @@ TEST_P(RdmaTest, Send_Partial_ExternalMemory) {
 
     // Go through the buffer sizes twice so that we ensure we re-use buffers with smaller sizes
     // than they previously held
-    for(size_t i = 0; i < maxTransferSize*2; ++i) {
+    for (size_t i = 0; i < maxTransferSize * 2; ++i) {
         size_t partialSize = i % maxTransferSize;
-        for(size_t j = 0; j < partialSize; ++j) {
+        for (size_t j = 0; j < partialSize; ++j) {
             sendBuffer[j] = static_cast<uint8_t>(rand());
         }
         std::vector<uint8_t> receiveBuffer;
@@ -698,11 +734,12 @@ TEST_P(RdmaTest, Send_Partial_ExternalMemory) {
         ASSERT_EQ(partialSize, completion.GetCompletedBytes());
         RDMA_ASSERT_NO_THROW(receiveBuffer = connections.receiver.Receive());
         ASSERT_EQ(partialSize, receiveBuffer.size());
-        EXPECT_EQ(std::vector<uint8_t>(sendBuffer.begin(), sendBuffer.begin()+partialSize), receiveBuffer);
+        EXPECT_EQ(std::vector<uint8_t>(sendBuffer.begin(), sendBuffer.begin() + partialSize), receiveBuffer);
     }
 }
 
-TEST_P(RdmaTest, Recv_Partial_ExternalMemory) {
+TEST_P(RdmaTest, Recv_Partial_ExternalMemory)
+{
     const size_t maxTransferSize = 100;
     std::vector<uint8_t> recvBuffer(maxTransferSize);
     ConnectionPair connections;
@@ -713,14 +750,14 @@ TEST_P(RdmaTest, Recv_Partial_ExternalMemory) {
 
     // Go through the buffer sizes twice so that we ensure we re-use buffers with smaller sizes
     // than they previously held
-    for(size_t i = 0; i < maxTransferSize*2; ++i) {
+    for (size_t i = 0; i < maxTransferSize * 2; ++i) {
         size_t partialSize = i % maxTransferSize;
 
         std::vector<uint8_t> sendBuffer(partialSize);
-        for(auto& byte : sendBuffer) {
+        for (auto& byte : sendBuffer) {
             byte = static_cast<uint8_t>(rand());
         }
-        //Fill in whole recv buffer with 0's
+        // Fill in whole recv buffer with 0's
         std::fill(recvBuffer.begin(), recvBuffer.end(), 0);
 
         BufferCompletion completion;
@@ -730,13 +767,14 @@ TEST_P(RdmaTest, Recv_Partial_ExternalMemory) {
         ASSERT_EQ(partialSize, completion.GetCompletedBytes());
 
         // Transferred portion should match what we sent
-        EXPECT_EQ(std::vector<uint8_t>(recvBuffer.begin(), recvBuffer.begin()+partialSize), sendBuffer);
+        EXPECT_EQ(std::vector<uint8_t>(recvBuffer.begin(), recvBuffer.begin() + partialSize), sendBuffer);
         // Remaining portion should be 0's
-        EXPECT_EQ(std::vector<uint8_t>(recvBuffer.begin()+partialSize, recvBuffer.end()), std::vector<uint8_t>(recvBuffer.size()-partialSize, 0));
+        EXPECT_EQ(std::vector<uint8_t>(recvBuffer.begin() + partialSize, recvBuffer.end()), std::vector<uint8_t>(recvBuffer.size() - partialSize, 0));
     }
 }
 
-TEST_P(RdmaTest, Recv_Partial_ExternalMemory_AfterSend) {
+TEST_P(RdmaTest, Recv_Partial_ExternalMemory_AfterSend)
+{
     const size_t maxTransferSize = 100;
     std::vector<uint8_t> recvBuffer(maxTransferSize);
     ConnectionPair connections;
@@ -747,14 +785,14 @@ TEST_P(RdmaTest, Recv_Partial_ExternalMemory_AfterSend) {
 
     // Go through the buffer sizes twice so that we ensure we re-use buffers with smaller sizes
     // than they previously held
-    for(size_t i = 0; i < maxTransferSize*2; ++i) {
+    for (size_t i = 0; i < maxTransferSize * 2; ++i) {
         size_t partialSize = i % maxTransferSize;
 
         std::vector<uint8_t> sendBuffer(partialSize);
-        for(auto& byte : sendBuffer) {
+        for (auto& byte : sendBuffer) {
             byte = static_cast<uint8_t>(rand());
         }
-        //Fill in whole recv buffer with 0's
+        // Fill in whole recv buffer with 0's
         std::fill(recvBuffer.begin(), recvBuffer.end(), 0);
 
         // Send first, without buffers queued on receive side. This tests
@@ -767,24 +805,24 @@ TEST_P(RdmaTest, Recv_Partial_ExternalMemory_AfterSend) {
         ASSERT_EQ(partialSize, completion.GetCompletedBytes());
 
         // Transferred portion should match what we sent
-        EXPECT_EQ(std::vector<uint8_t>(recvBuffer.begin(), recvBuffer.begin()+partialSize), sendBuffer);
+        EXPECT_EQ(std::vector<uint8_t>(recvBuffer.begin(), recvBuffer.begin() + partialSize), sendBuffer);
         // Remaining portion should be 0's
-        EXPECT_EQ(std::vector<uint8_t>(recvBuffer.begin()+partialSize, recvBuffer.end()), std::vector<uint8_t>(recvBuffer.size()-partialSize, 0));
+        EXPECT_EQ(std::vector<uint8_t>(recvBuffer.begin() + partialSize, recvBuffer.end()), std::vector<uint8_t>(recvBuffer.size() - partialSize, 0));
     }
 }
 
-
-TEST_P(RdmaTest, ExternalMemoryRecv) {
+TEST_P(RdmaTest, ExternalMemoryRecv)
+{
     ConnectionPair connections;
     RDMA_ASSERT_NO_THROW(connections = GetLoopbackConnection());
 
     const int bufferCount = 10;
     const int transferCount = 20;
-    const size_t eachBufferLen = 1024*1024;
-    std::vector<uint8_t> largeRecvBuffer(bufferCount*eachBufferLen);
+    const size_t eachBufferLen = 1024 * 1024;
+    std::vector<uint8_t> largeRecvBuffer(bufferCount * eachBufferLen);
     std::vector<std::vector<uint8_t>> sendBuffers(transferCount, std::vector<uint8_t>(eachBufferLen));
-    for(auto& sendbuf : sendBuffers) {
-        for(auto& b : sendbuf) {
+    for (auto& sendbuf : sendBuffers) {
+        for (auto& b : sendbuf) {
             b = static_cast<uint8_t>(rand());
         }
     }
@@ -795,24 +833,30 @@ TEST_P(RdmaTest, ExternalMemoryRecv) {
     // Queue all rx buffers at start
     BufferCompletion completedTransfers[transferCount];
     size_t queuedSendBuffers = 0;
-    for(int i = 0; i < bufferCount; ++i) {
-        RDMA_ASSERT_NO_THROW(connections.receiver.QueueExternalBufferWithCallback(largeRecvBuffer.data() + (i % bufferCount)*eachBufferLen,
-                                                                                eachBufferLen, &completedTransfers[queuedSendBuffers++], nullptr, 1000));
+    for (int i = 0; i < bufferCount; ++i) {
+        RDMA_ASSERT_NO_THROW(connections.receiver.QueueExternalBufferWithCallback(largeRecvBuffer.data() + (i % bufferCount) * eachBufferLen,
+            eachBufferLen,
+            &completedTransfers[queuedSendBuffers++],
+            nullptr,
+            1000));
     }
     auto sender = std::async(std::launch::async, [&]() {
-        for(int i = 0; i < transferCount; ++i) {
+        for (int i = 0; i < transferCount; ++i) {
             connections.sender.Send(sendBuffers[i]);
         }
     });
     auto receiver = std::async(std::launch::async, [&]() {
-        for(int i = 0; i < transferCount; ++i) {
+        for (int i = 0; i < transferCount; ++i) {
             RDMA_ASSERT_NO_THROW(completedTransfers[i].WaitForCompletion(1000)) << "Buffer index: " << i;
-            EXPECT_EQ(memcmp(sendBuffers[i].data(), largeRecvBuffer.data() + (i % bufferCount)*eachBufferLen, eachBufferLen), 0);
+            EXPECT_EQ(memcmp(sendBuffers[i].data(), largeRecvBuffer.data() + (i % bufferCount) * eachBufferLen, eachBufferLen), 0);
 
             // Done with buffer, so re-queue it
-            if(i < transferCount-bufferCount) {
-                RDMA_ASSERT_NO_THROW(connections.receiver.QueueExternalBufferWithCallback(largeRecvBuffer.data() + (i % bufferCount)*eachBufferLen,
-                                                                                eachBufferLen, &completedTransfers[queuedSendBuffers++], nullptr, 1000));
+            if (i < transferCount - bufferCount) {
+                RDMA_ASSERT_NO_THROW(connections.receiver.QueueExternalBufferWithCallback(largeRecvBuffer.data() + (i % bufferCount) * eachBufferLen,
+                    eachBufferLen,
+                    &completedTransfers[queuedSendBuffers++],
+                    nullptr,
+                    1000));
             }
         }
     });
@@ -821,7 +865,8 @@ TEST_P(RdmaTest, ExternalMemoryRecv) {
     RDMA_ASSERT_NO_THROW(connections.Close()); // Explicitly close the sessions before destroying the external buffer
 }
 
-TEST_P(RdmaTest, FlowControl_AddCredit) {
+TEST_P(RdmaTest, FlowControl_AddCredit)
+{
     // Completion objects must live longer than the connections
     BufferCompletion sendCompletion;
     BufferCompletion receiveCompletion;
@@ -856,7 +901,8 @@ TEST_P(RdmaTest, FlowControl_AddCredit) {
     RDMA_ASSERT_NO_THROW(connections.Close()); // Explicitly close the sessions before destroying the external buffer
 }
 
-TEST_P(RdmaTest, Send_NoQueuedRx) {
+TEST_P(RdmaTest, Send_NoQueuedRx)
+{
     ConnectionPair connections;
     RDMA_ASSERT_NO_THROW(connections = GetLoopbackConnection());
     const size_t bufferSize = 4096;
@@ -868,15 +914,15 @@ TEST_P(RdmaTest, Send_NoQueuedRx) {
 
     std::vector<uint8_t> sendBuffer(bufferSize);
     // We can queue as many buffers as we set the max overlapped count without any Rx queued because it just queues on the sender side
-    for(size_t i=0; i < numSendBuffers; ++i) {
+    for (size_t i = 0; i < numSendBuffers; ++i) {
         RDMA_ASSERT_NO_THROW(connections.sender.Send(sendBuffer));
     }
     RDMA_ASSERT_THROW_WITHCODE(connections.sender.Send(sendBuffer, 10), easyrdma_Error_Timeout);
     RDMA_ASSERT_NO_THROW(connections.Close()); // Explicitly close the sessions before destroying the external buffer
 }
 
-
-TEST_P(RdmaTest, Receive_Timeout) {
+TEST_P(RdmaTest, Receive_Timeout)
+{
     ConnectionPair connections;
     RDMA_ASSERT_NO_THROW(connections = GetLoopbackConnection());
     const size_t bufferSize = 4096;
@@ -886,8 +932,8 @@ TEST_P(RdmaTest, Receive_Timeout) {
     RDMA_ASSERT_THROW_WITHCODE(connections.receiver.Receive(10), easyrdma_Error_Timeout);
 }
 
-
-TEST_P(RdmaTest, Receive_Cancel_WithClose) {
+TEST_P(RdmaTest, Receive_Cancel_WithClose)
+{
     ConnectionPair connections;
     RDMA_ASSERT_NO_THROW(connections = GetLoopbackConnection());
     const size_t bufferSize = 4096;
@@ -896,7 +942,7 @@ TEST_P(RdmaTest, Receive_Cancel_WithClose) {
 
     auto receive = std::async(std::launch::async, [&]() {
         return connections.receiver.Receive(5000);
-    } );
+    });
     // Give time for async receive thread to start
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
@@ -904,11 +950,12 @@ TEST_P(RdmaTest, Receive_Cancel_WithClose) {
     auto cancelStart = std::chrono::steady_clock::now();
     RDMA_ASSERT_NO_THROW(connections.receiver.Close());
     RDMA_ASSERT_THROW_WITHCODE(receive.get(), easyrdma_Error_OperationCancelled);
-    auto cancelDuration = std::chrono::steady_clock::now()-cancelStart;
+    auto cancelDuration = std::chrono::steady_clock::now() - cancelStart;
     EXPECT_LE(cancelDuration, std::chrono::milliseconds(500));
 }
 
-TEST_P(RdmaTest, Receive_Cancel_WithAbort) {
+TEST_P(RdmaTest, Receive_Cancel_WithAbort)
+{
     ConnectionPair connections;
     RDMA_ASSERT_NO_THROW(connections = GetLoopbackConnection());
     const size_t bufferSize = 4096;
@@ -917,7 +964,7 @@ TEST_P(RdmaTest, Receive_Cancel_WithAbort) {
 
     auto receive = std::async(std::launch::async, [&]() {
         return connections.receiver.Receive(5000);
-    } );
+    });
     // Give time for async receive thread to start
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
@@ -929,12 +976,12 @@ TEST_P(RdmaTest, Receive_Cancel_WithAbort) {
     RDMA_ASSERT_NO_THROW(connections.receiver.Abort());
 
     RDMA_ASSERT_THROW_WITHCODE(receive.get(), easyrdma_Error_OperationCancelled);
-    auto cancelDuration = std::chrono::steady_clock::now()-cancelStart;
+    auto cancelDuration = std::chrono::steady_clock::now() - cancelStart;
     EXPECT_LE(cancelDuration, std::chrono::milliseconds(500));
 }
 
-
-TEST_P(RdmaTest, Receive_MultipleSimultaneous) {
+TEST_P(RdmaTest, Receive_MultipleSimultaneous)
+{
     ConnectionPair connections;
     RDMA_ASSERT_NO_THROW(connections = GetLoopbackConnection());
     const size_t bufferSize = 4096;
@@ -943,15 +990,15 @@ TEST_P(RdmaTest, Receive_MultipleSimultaneous) {
 
     auto receive = std::async(std::launch::async, [&]() {
         return connections.receiver.Receive(200);
-    } );
+    });
     // Make sure first recv has started, then initiate second recv. Should immediately fail.
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     RDMA_EXPECT_THROW_WITHCODE(connections.receiver.Receive(50), easyrdma_Error_BufferWaitInProgress);
     RDMA_EXPECT_THROW_WITHCODE(receive.get(), easyrdma_Error_Timeout);
 }
 
-
-TEST_P(RdmaTest, Send_Cancel_WithClose) {
+TEST_P(RdmaTest, Send_Cancel_WithClose)
+{
     ConnectionPair connections;
     RDMA_ASSERT_NO_THROW(connections = GetLoopbackConnection());
     const size_t bufferSize = 4096;
@@ -967,7 +1014,7 @@ TEST_P(RdmaTest, Send_Cancel_WithClose) {
     // Second send should block
     auto blockingSend = std::async(std::launch::async, [&]() {
         return connections.sender.Send(sendBuffer, 5000);
-    } );
+    });
     // Give time for async receive thread to start
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
@@ -975,11 +1022,12 @@ TEST_P(RdmaTest, Send_Cancel_WithClose) {
     auto cancelStart = std::chrono::steady_clock::now();
     RDMA_ASSERT_NO_THROW(connections.sender.Close());
     RDMA_ASSERT_THROW_WITHCODE(blockingSend.get(), easyrdma_Error_OperationCancelled);
-    auto cancelDuration = std::chrono::steady_clock::now()-cancelStart;
+    auto cancelDuration = std::chrono::steady_clock::now() - cancelStart;
     EXPECT_LE(cancelDuration, std::chrono::milliseconds(500));
 }
 
-TEST_P(RdmaTest, Send_Cancel_WithAbort) {
+TEST_P(RdmaTest, Send_Cancel_WithAbort)
+{
     ConnectionPair connections;
     RDMA_ASSERT_NO_THROW(connections = GetLoopbackConnection());
     const size_t bufferSize = 4096;
@@ -995,7 +1043,7 @@ TEST_P(RdmaTest, Send_Cancel_WithAbort) {
     // Second send should block
     auto blockingSend = std::async(std::launch::async, [&]() {
         return connections.sender.Send(sendBuffer, 5000);
-    } );
+    });
     // Give time for async receive thread to start
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
@@ -1007,27 +1055,28 @@ TEST_P(RdmaTest, Send_Cancel_WithAbort) {
     RDMA_ASSERT_NO_THROW(connections.sender.Abort());
 
     RDMA_ASSERT_THROW_WITHCODE(blockingSend.get(), easyrdma_Error_OperationCancelled);
-    auto cancelDuration = std::chrono::steady_clock::now()-cancelStart;
+    auto cancelDuration = std::chrono::steady_clock::now() - cancelStart;
     EXPECT_LE(cancelDuration, std::chrono::milliseconds(500));
 }
 
-TEST_P(RdmaTest, Sender_Close_Does_Not_Abort_Already_Recv) {
+TEST_P(RdmaTest, Sender_Close_Does_Not_Abort_Already_Recv)
+{
     ConnectionPair connections;
     RDMA_ASSERT_NO_THROW(connections = GetLoopbackConnection());
-    const size_t bufferSize = 40960*1024; // Use large buffers so transfer takes a while
+    const size_t bufferSize = 40960 * 1024; // Use large buffers so transfer takes a while
     RDMA_ASSERT_NO_THROW(connections.sender.ConfigureBuffers(bufferSize, 6));
     RDMA_ASSERT_NO_THROW(connections.receiver.ConfigureBuffers(bufferSize, 6));
     std::vector<uint8_t> sendBuffer(bufferSize);
 
     // Send 5 buffers
-    for(int i=0; i < 5; i++) {
+    for (int i = 0; i < 5; i++) {
         RDMA_ASSERT_NO_THROW(connections.sender.Send(sendBuffer));
     }
     // Wait for sends to complete
     auto pollStart = std::chrono::steady_clock::now();
-    while(connections.sender.GetPropertyU64(easyrdma_Property_QueuedBuffers) > 0) {
+    while (connections.sender.GetPropertyU64(easyrdma_Property_QueuedBuffers) > 0) {
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
-        ASSERT_TRUE(std::chrono::steady_clock::now()-pollStart < std::chrono::milliseconds(500));
+        ASSERT_TRUE(std::chrono::steady_clock::now() - pollStart < std::chrono::milliseconds(500));
     }
     // Close sender
     RDMA_ASSERT_NO_THROW(connections.sender.Close());
@@ -1052,8 +1101,8 @@ TEST_P(RdmaTest, Sender_Close_Does_Not_Abort_Already_Recv) {
     RDMA_ASSERT_THROW_WITHCODE(connections.receiver.Receive(100), easyrdma_Error_Disconnected);
 }
 
-
-TEST_P(RdmaTest, Connect_Error_BadPort) {
+TEST_P(RdmaTest, Connect_Error_BadPort)
+{
     RdmaAddress localAddressConnector = GetEndpointAddresses().first;
     RdmaAddress localAddressToConnect = GetEndpointAddresses().second;
     localAddressToConnect.SetPort(3); // unused port
@@ -1063,21 +1112,20 @@ TEST_P(RdmaTest, Connect_Error_BadPort) {
     try {
         sessionConnector.Connect(easyrdma_Direction_Send, localAddressToConnect.GetAddrString(), localAddressToConnect.GetPort());
         ASSERT_FALSE(true) << "Should have asserted!";
-    }
-    catch(const RdmaTestException& e) {
-        #ifdef _WIN32
-            const int expectedErrorCode = easyrdma_Error_ConnectionRefused;
-        #else
-            const int expectedErrorCode = easyrdma_Error_UnableToConnect;
-        #endif
+    } catch (const RdmaTestException& e) {
+#ifdef _WIN32
+        const int expectedErrorCode = easyrdma_Error_ConnectionRefused;
+#else
+        const int expectedErrorCode = easyrdma_Error_UnableToConnect;
+#endif
         ASSERT_EQ(e.errorCode, expectedErrorCode);
-    }
-    catch(std::exception&) {
+    } catch (std::exception&) {
         RDMA_ASSERT_NO_THROW(throw);
     }
 }
 
-TEST_P(RdmaTest, Connect_Error_BadRemoteAddress) {
+TEST_P(RdmaTest, Connect_Error_BadRemoteAddress)
+{
     RdmaAddress localAddressConnector = GetEndpointAddresses().first;
     RdmaAddress localAddressToConnect = RdmaAddress("8.8.8.8", 5000);
     Session sessionConnector;
@@ -1086,82 +1134,83 @@ TEST_P(RdmaTest, Connect_Error_BadRemoteAddress) {
     try {
         sessionConnector.Connect(easyrdma_Direction_Send, localAddressToConnect.GetAddrString(), localAddressToConnect.GetPort(), 50);
         ASSERT_FALSE(true) << "Should have asserted!";
-    }
-    catch(const RdmaTestException& e) {
+    } catch (const RdmaTestException& e) {
         ASSERT_TRUE(e.errorCode == easyrdma_Error_Timeout || e.errorCode == easyrdma_Error_UnableToConnect);
-    }
-    catch(std::exception&) {
+    } catch (std::exception&) {
         RDMA_ASSERT_NO_THROW(throw);
     }
 }
 
-
-TEST_P(RdmaTest, Connect_Error_BadRemoteAddressString) {
+TEST_P(RdmaTest, Connect_Error_BadRemoteAddressString)
+{
     RdmaAddress localAddressConnector = GetEndpointAddresses().first;
 
     const char* addresses[] = {
         "address.invalid",
         "",
-        "1.2.3.4.5"
-    };
+        "1.2.3.4.5"};
 
-    for(auto& addr : addresses) {
+    for (auto& addr : addresses) {
         Session sessionConnector;
         RDMA_ASSERT_NO_THROW(sessionConnector = Session::CreateConnector(localAddressConnector.GetAddrString(), localAddressConnector.GetPort()));
         RDMA_EXPECT_THROW_WITHCODE(sessionConnector.Connect(easyrdma_Direction_Send, addr, 5000, 50), easyrdma_Error_InvalidAddress);
     }
 }
 
-TEST_P(RdmaTest, Connect_Error_BadLocalAddressString) {
+TEST_P(RdmaTest, Connect_Error_BadLocalAddressString)
+{
     const char* addresses[] = {
         "address.invalid",
         "",
-        "1.2.3.4.5"
-    };
+        "1.2.3.4.5"};
 
-    for(auto& addr : addresses) {
+    for (auto& addr : addresses) {
         Session sessionConnector;
         RDMA_EXPECT_THROW_WITHCODE(sessionConnector = Session::CreateConnector(addr, 5000), easyrdma_Error_InvalidAddress);
     }
 }
 
-TEST_P(RdmaTest, Listen_Error_BadLocalAddressString) {
+TEST_P(RdmaTest, Listen_Error_BadLocalAddressString)
+{
     const char* addresses[] = {
         "address.invalid",
         "",
-        "1.2.3.4.5"
-    };
+        "1.2.3.4.5"};
 
-    for(auto& addr : addresses) {
+    for (auto& addr : addresses) {
         Session sessionListener;
         RDMA_EXPECT_THROW_WITHCODE(sessionListener = Session::CreateListener(addr, 5000), easyrdma_Error_InvalidAddress);
     }
 }
 
-TEST_P(RdmaTest, Listen_Error_InvalidLocalAddress) {
+TEST_P(RdmaTest, Listen_Error_InvalidLocalAddress)
+{
     const char* addresses[] = {
         "169.254.0.1", // LLA address that is in reserved range to won't be automatically assigned
     };
 
-    for(auto& addr : addresses) {
+    for (auto& addr : addresses) {
         Session sessionListener;
         RDMA_EXPECT_THROW_WITHCODE(sessionListener = Session::CreateListener(addr, 5000), easyrdma_Error_InvalidAddress);
     }
 }
 
-TEST_P(RdmaTest, Connect_Error_BadLocalAddress) {
+TEST_P(RdmaTest, Connect_Error_BadLocalAddress)
+{
     RdmaAddress localAddressConnector = RdmaAddress("8.8.8.8", 5000);
     Session sessionConnector;
     RDMA_ASSERT_THROW_WITHCODE(sessionConnector = Session::CreateConnector(localAddressConnector.GetAddrString(), localAddressConnector.GetPort()), easyrdma_Error_InvalidAddress);
 }
 
-TEST_P(RdmaTest, Listen_Error_BadLocalAddress) {
+TEST_P(RdmaTest, Listen_Error_BadLocalAddress)
+{
     Session sessionListener;
     RdmaAddress localAddressConnector = RdmaAddress("8.8.8.8", 5000);
     RDMA_ASSERT_THROW_WITHCODE(sessionListener = Session::CreateListener(localAddressConnector.GetAddrString(), localAddressConnector.GetPort()), easyrdma_Error_InvalidAddress);
 }
 
-TEST_P(RdmaTest, Connect_Error_InvalidDirection) {
+TEST_P(RdmaTest, Connect_Error_InvalidDirection)
+{
     auto endpoints = GetEndpointAddresses();
     RdmaAddress localAddressListener = endpoints.first;
     RdmaAddress localAddressConnector = endpoints.second;
@@ -1172,17 +1221,18 @@ TEST_P(RdmaTest, Connect_Error_InvalidDirection) {
 
     accept = std::async(std::launch::async, [&]() {
         return sessionListener.Accept(easyrdma_Direction_Send);
-    } );
-    #ifdef _WIN32
-        const int expectedErrorCode = easyrdma_Error_ConnectionRefused;
-    #else
-        const int expectedErrorCode = easyrdma_Error_UnableToConnect;
-    #endif
+    });
+#ifdef _WIN32
+    const int expectedErrorCode = easyrdma_Error_ConnectionRefused;
+#else
+    const int expectedErrorCode = easyrdma_Error_UnableToConnect;
+#endif
     RDMA_ASSERT_THROW_WITHCODE(sessionConnectorSender.Connect(easyrdma_Direction_Send, localAddressListener.GetAddrString(), sessionListener.GetLocalPort()), expectedErrorCode);
     RDMA_ASSERT_THROW_WITHCODE(accept.get(), easyrdma_Error_InvalidDirection);
 }
 
-TEST_P(RdmaTest, Accept_Error_InvalidDirection) {
+TEST_P(RdmaTest, Accept_Error_InvalidDirection)
+{
     auto endpoints = GetEndpointAddresses();
     RdmaAddress localAddressListener = endpoints.first;
     RdmaAddress localAddressConnector = endpoints.second;
@@ -1195,13 +1245,12 @@ TEST_P(RdmaTest, Accept_Error_InvalidDirection) {
         kConnectionDataProtocol,
         1,
         1,
-        static_cast<uint8_t>(easyrdma_Direction_Send)
-    };
+        static_cast<uint8_t>(easyrdma_Direction_Send)};
     sessionListener.SetProperty(easyrdma_Property_ConnectionData, &cd, sizeof(cd));
 
     accept = std::async(std::launch::async, [&]() {
         return sessionListener.Accept(easyrdma_Direction_Receive, 100);
-    } );
+    });
     RDMA_ASSERT_THROW_WITHCODE(sessionConnectorSender.Connect(easyrdma_Direction_Send, localAddressListener.GetAddrString(), sessionListener.GetLocalPort()), easyrdma_Error_InvalidDirection);
 #ifdef _WIN32
     RDMA_ASSERT_THROW_WITHCODE(accept.get(), easyrdma_Error_Timeout);
@@ -1211,8 +1260,8 @@ TEST_P(RdmaTest, Accept_Error_InvalidDirection) {
 #endif
 }
 
-
-TEST_P(RdmaTest, ConnectionData_SetExpected) {
+TEST_P(RdmaTest, ConnectionData_SetExpected)
+{
     auto endpoints = GetEndpointAddresses();
     RdmaAddress localAddressListener = endpoints.first;
     RdmaAddress localAddressConnector = endpoints.second;
@@ -1224,19 +1273,19 @@ TEST_P(RdmaTest, ConnectionData_SetExpected) {
         kConnectionDataProtocol,
         1,
         1,
-        static_cast<uint8_t>(easyrdma_Direction_Receive)
-    };
+        static_cast<uint8_t>(easyrdma_Direction_Receive)};
     sessionListener.SetProperty(easyrdma_Property_ConnectionData, &cd, sizeof(cd));
     cd.direction = static_cast<uint8_t>(easyrdma_Direction_Send);
     sessionConnectorSender.SetProperty(easyrdma_Property_ConnectionData, &cd, sizeof(cd));
     accept = std::async(std::launch::async, [&]() {
         return sessionListener.Accept(easyrdma_Direction_Receive);
-    } );
+    });
     RDMA_ASSERT_NO_THROW(sessionConnectorSender.Connect(easyrdma_Direction_Send, localAddressListener.GetAddrString(), sessionListener.GetLocalPort()));
     RDMA_ASSERT_NO_THROW(accept.get());
 }
 
-TEST_P(RdmaTest, ConnectionData_InvalidProtocol) {
+TEST_P(RdmaTest, ConnectionData_InvalidProtocol)
+{
     auto endpoints = GetEndpointAddresses();
     RdmaAddress localAddressListener = endpoints.first;
     RdmaAddress localAddressConnector = endpoints.second;
@@ -1248,17 +1297,18 @@ TEST_P(RdmaTest, ConnectionData_InvalidProtocol) {
     sessionConnectorSender.SetProperty(easyrdma_Property_ConnectionData, &buffer, sizeof(buffer));
     accept = std::async(std::launch::async, [&]() {
         return sessionListener.Accept(easyrdma_Direction_Receive);
-    } );
-    #ifdef _WIN32
-        const int expectedErrorCode = easyrdma_Error_ConnectionRefused;
-    #else
-        const int expectedErrorCode = easyrdma_Error_UnableToConnect;
-    #endif
+    });
+#ifdef _WIN32
+    const int expectedErrorCode = easyrdma_Error_ConnectionRefused;
+#else
+    const int expectedErrorCode = easyrdma_Error_UnableToConnect;
+#endif
     RDMA_ASSERT_THROW_WITHCODE(sessionConnectorSender.Connect(easyrdma_Direction_Send, localAddressListener.GetAddrString(), sessionListener.GetLocalPort()), expectedErrorCode);
     RDMA_ASSERT_THROW_WITHCODE(accept.get(), easyrdma_Error_IncompatibleProtocol);
 }
 
-TEST_P(RdmaTest, ConnectionData_NewerCompatibleVersion) {
+TEST_P(RdmaTest, ConnectionData_NewerCompatibleVersion)
+{
     auto endpoints = GetEndpointAddresses();
     RdmaAddress localAddressListener = endpoints.first;
     RdmaAddress localAddressConnector = endpoints.second;
@@ -1276,12 +1326,13 @@ TEST_P(RdmaTest, ConnectionData_NewerCompatibleVersion) {
     sessionConnectorSender.SetProperty(easyrdma_Property_ConnectionData, connectionDataBuffer.data(), connectionDataBuffer.size());
     accept = std::async(std::launch::async, [&]() {
         return sessionListener.Accept(easyrdma_Direction_Receive);
-    } );
+    });
     RDMA_ASSERT_NO_THROW(sessionConnectorSender.Connect(easyrdma_Direction_Send, localAddressListener.GetAddrString(), sessionListener.GetLocalPort()));
     RDMA_ASSERT_NO_THROW(accept.get());
 }
 
-TEST_P(RdmaTest, ConnectionData_NewerIncompatibleVersion) {
+TEST_P(RdmaTest, ConnectionData_NewerIncompatibleVersion)
+{
     auto endpoints = GetEndpointAddresses();
     RdmaAddress localAddressListener = endpoints.first;
     RdmaAddress localAddressConnector = endpoints.second;
@@ -1299,17 +1350,18 @@ TEST_P(RdmaTest, ConnectionData_NewerIncompatibleVersion) {
     sessionConnectorSender.SetProperty(easyrdma_Property_ConnectionData, connectionDataBuffer.data(), connectionDataBuffer.size());
     accept = std::async(std::launch::async, [&]() {
         return sessionListener.Accept(easyrdma_Direction_Receive);
-    } );
-    #ifdef _WIN32
-        const int expectedErrorCode = easyrdma_Error_ConnectionRefused;
-    #else
-        const int expectedErrorCode = easyrdma_Error_UnableToConnect;
-    #endif
+    });
+#ifdef _WIN32
+    const int expectedErrorCode = easyrdma_Error_ConnectionRefused;
+#else
+    const int expectedErrorCode = easyrdma_Error_UnableToConnect;
+#endif
     RDMA_ASSERT_THROW_WITHCODE(sessionConnectorSender.Connect(easyrdma_Direction_Send, localAddressListener.GetAddrString(), sessionListener.GetLocalPort()), expectedErrorCode);
     RDMA_ASSERT_THROW_WITHCODE(accept.get(), easyrdma_Error_IncompatibleVersion);
 }
 
-TEST_P(RdmaTest, SendAfterDisconnect) {
+TEST_P(RdmaTest, SendAfterDisconnect)
+{
     ConnectionPair connections;
     RDMA_ASSERT_NO_THROW(connections = GetLoopbackConnection());
     const size_t bufferSize = 4096;
@@ -1325,7 +1377,8 @@ TEST_P(RdmaTest, SendAfterDisconnect) {
     RDMA_ASSERT_THROW_WITHCODE(connections.sender.Send(sendBuffer), easyrdma_Error_Disconnected);
 }
 
-TEST_P(RdmaTest, ReceiveAfterDisconnect) {
+TEST_P(RdmaTest, ReceiveAfterDisconnect)
+{
     ConnectionPair connections;
     RDMA_ASSERT_NO_THROW(connections = GetLoopbackConnection());
     const size_t bufferSize = 4096;
@@ -1340,7 +1393,8 @@ TEST_P(RdmaTest, ReceiveAfterDisconnect) {
     RDMA_ASSERT_THROW_WITHCODE(connections.receiver.Receive(), easyrdma_Error_Disconnected);
 }
 
-TEST_P(RdmaTest, ReceiveDuringDisconnect) {
+TEST_P(RdmaTest, ReceiveDuringDisconnect)
+{
     ConnectionPair connections;
     RDMA_ASSERT_NO_THROW(connections = GetLoopbackConnection());
     const size_t bufferSize = 4096;
@@ -1360,9 +1414,8 @@ TEST_P(RdmaTest, ReceiveDuringDisconnect) {
     RDMA_ASSERT_THROW_WITHCODE(receive.get(), easyrdma_Error_Disconnected);
 }
 
-
-
-TEST_P(RdmaTest, Property_QueuedBuffers) {
+TEST_P(RdmaTest, Property_QueuedBuffers)
+{
     ConnectionPair connections;
     RDMA_ASSERT_NO_THROW(connections = GetLoopbackConnection());
     const size_t bufferSize = 4096;
@@ -1374,7 +1427,8 @@ TEST_P(RdmaTest, Property_QueuedBuffers) {
     RDMA_ASSERT_NO_THROW(EXPECT_EQ(0U, connections.sender.GetPropertyU64(easyrdma_Property_QueuedBuffers)));
 }
 
-TEST_P(RdmaTest, Property_SessionsOpened) {
+TEST_P(RdmaTest, Property_SessionsOpened)
+{
     RDMA_ASSERT_NO_THROW(EXPECT_EQ(0U, Session::GetPropertyOnSession<uint64_t>(easyrdma_InvalidSession, easyrdma_Property_NumOpenedSessions)));
     RDMA_ASSERT_NO_THROW(EXPECT_EQ(0U, Session::GetPropertyOnSession<uint64_t>(easyrdma_InvalidSession, easyrdma_Property_NumPendingDestructionSessions)));
     ConnectionPair connections;
@@ -1386,8 +1440,8 @@ TEST_P(RdmaTest, Property_SessionsOpened) {
     RDMA_ASSERT_NO_THROW(EXPECT_EQ(0U, Session::GetPropertyOnSession<uint64_t>(easyrdma_InvalidSession, easyrdma_Property_NumPendingDestructionSessions)));
 }
 
-
-TEST_P(RdmaTest, SendReceive_Continuous) {
+TEST_P(RdmaTest, SendReceive_Continuous)
+{
     ConnectionPair connections;
     RDMA_ASSERT_NO_THROW(connections = GetLoopbackConnection());
     const size_t kNumBuffers = 10;
@@ -1396,19 +1450,19 @@ TEST_P(RdmaTest, SendReceive_Continuous) {
     RDMA_ASSERT_NO_THROW(connections.sender.ConfigureBuffers(kEachTransferSize, kNumBuffers));
 
     // Loop through all the buffers multiple times
-    const int kTotalTransfers = kNumBuffers*100;
+    const int kTotalTransfers = kNumBuffers * 100;
 
     // Generate send data
     std::vector<std::vector<uint8_t>> sendData(kTotalTransfers, std::vector<uint8_t>(kEachTransferSize));
-    for(auto& xferBuffer : sendData) {
-        for(auto& byte : xferBuffer) {
+    for (auto& xferBuffer : sendData) {
+        for (auto& byte : xferBuffer) {
             byte = static_cast<uint8_t>(rand());
         }
     }
 
     // recv loop
     auto receiver = std::async(std::launch::async, [&]() {
-        for(size_t i = 0; i < kTotalTransfers; ++i) {
+        for (size_t i = 0; i < kTotalTransfers; ++i) {
             std::vector<uint8_t> data;
             RDMA_ASSERT_NO_THROW(data = std::move(connections.receiver.Receive()));
             EXPECT_EQ(data.size(), kEachTransferSize);
@@ -1418,17 +1472,18 @@ TEST_P(RdmaTest, SendReceive_Continuous) {
 
     // send loop
     auto sender = std::async(std::launch::async, [&]() {
-        for(size_t i = 0; i < kTotalTransfers; ++i) {
-            RDMA_ASSERT_NO_THROW(connections.sender.Send(sendData[i]))  << "Iteration: " << i;
+        for (size_t i = 0; i < kTotalTransfers; ++i) {
+            RDMA_ASSERT_NO_THROW(connections.sender.Send(sendData[i])) << "Iteration: " << i;
         }
     });
 }
 
-TEST_P(RdmaTest, TestBandwidth) {
+TEST_P(RdmaTest, TestBandwidth)
+{
     ConnectionPair connections;
     RDMA_ASSERT_NO_THROW(connections = GetLoopbackConnection());
     const size_t kNumBuffers = 10;
-    const int kEachTransferSize = 1024*1024;
+    const int kEachTransferSize = 1024 * 1024;
     RDMA_ASSERT_NO_THROW(connections.receiver.ConfigureBuffers(kEachTransferSize, kNumBuffers));
     RDMA_ASSERT_NO_THROW(connections.sender.ConfigureBuffers(kEachTransferSize, kNumBuffers));
 
@@ -1438,13 +1493,13 @@ TEST_P(RdmaTest, TestBandwidth) {
 
     int64_t totalRecvSize = 0;
     auto receiver = std::async(std::launch::async, [&]() {
-        for(int i = 0; i < count; ++i) {
+        for (int i = 0; i < count; ++i) {
             RDMA_ASSERT_NO_THROW(totalRecvSize += connections.receiver.ReceiveBlankData()) << "Iteration: " << i;
         }
     });
 
     auto sender = std::async(std::launch::async, [&]() {
-        for(int i = 0; i < count; ++i) {
+        for (int i = 0; i < count; ++i) {
             RDMA_ASSERT_NO_THROW(connections.sender.SendBlankData(kEachTransferSize)) << "Iteration: " << i;
             totalSendSize += kEachTransferSize;
         }
@@ -1454,13 +1509,14 @@ TEST_P(RdmaTest, TestBandwidth) {
     RDMA_ASSERT_NO_THROW(receiver.get());
 
     auto durationMs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count();
-    double bwGbitsPerSec = (totalRecvSize*8 / 1000000000.0) / (durationMs / 1000.0);
-    double bwGBPerSec = (totalRecvSize / (1024.0*1024.0*1024.0)) / (durationMs / 1000.0);
+    double bwGbitsPerSec = (totalRecvSize * 8 / 1000000000.0) / (durationMs / 1000.0);
+    double bwGBPerSec = (totalRecvSize / (1024.0 * 1024.0 * 1024.0)) / (durationMs / 1000.0);
     info() << "Bandwidth: " << bwGbitsPerSec << "Gbit/s; " << bwGBPerSec << "GB/s";
     ::testing::Test::RecordProperty("Bandwidth_Gbit/s", std::to_string(bwGbitsPerSec));
 }
 
-TEST_P(RdmaTest, TestLatency) {
+TEST_P(RdmaTest, TestLatency)
+{
     ConnectionPair connections;
     RDMA_ASSERT_NO_THROW(connections = GetLoopbackConnection());
     const int count = 1000;
@@ -1469,8 +1525,7 @@ TEST_P(RdmaTest, TestLatency) {
     RDMA_ASSERT_NO_THROW(connections.receiver.ConfigureBuffers(kTransferSize, 10));
     RDMA_ASSERT_NO_THROW(connections.sender.ConfigureBuffers(kTransferSize, 10));
 
-    for(int iteration = 0; iteration < count; ++iteration) {
-
+    for (int iteration = 0; iteration < count; ++iteration) {
         auto bufferRegion = connections.sender.GetSendRegion();
 
         // Timestamp before we queue send to after we recv. We are intentionally not timing copying the data out of the buffer
@@ -1481,7 +1536,7 @@ TEST_P(RdmaTest, TestLatency) {
     }
 
     double nanosecAccum = 0;
-    for(auto n : durations) {
+    for (auto n : durations) {
         nanosecAccum += n;
     }
 
@@ -1490,7 +1545,8 @@ TEST_P(RdmaTest, TestLatency) {
     ::testing::Test::RecordProperty("One-way latency (us)", std::to_string(latencyUs));
 }
 
-TEST_P(RdmaTest, FlowControl_Internal) {
+TEST_P(RdmaTest, FlowControl_Internal)
+{
     ConnectionPair connections;
     RDMA_ASSERT_NO_THROW(connections = GetLoopbackConnection());
 
@@ -1505,37 +1561,37 @@ TEST_P(RdmaTest, FlowControl_Internal) {
 
     // Generate send data
     std::vector<std::vector<uint8_t>> sendData(kSendBuffers, std::vector<uint8_t>(kEachTransferSize));
-    for(auto& xferBuffer : sendData) {
-        for(auto& byte : xferBuffer) {
+    for (auto& xferBuffer : sendData) {
+        for (auto& byte : xferBuffer) {
             byte = static_cast<uint8_t>(rand());
         }
     }
 
     // recv loop
     auto receiver = std::async(std::launch::async, [&]() {
-        for(size_t i = 0; i < kTotalTransfers; ++i) {
+        for (size_t i = 0; i < kTotalTransfers; ++i) {
             // Throttle recv to test flow control
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
             std::vector<uint8_t> data;
             RDMA_ASSERT_NO_THROW(data = std::move(connections.receiver.Receive()));
             EXPECT_EQ(data.size(), kEachTransferSize);
-            const auto& sendBufferData = sendData[i%kSendBuffers];
+            const auto& sendBufferData = sendData[i % kSendBuffers];
             EXPECT_EQ(0, memcmp(data.data(), sendBufferData.data(), kEachTransferSize)) << "Iteration: " << i;
         }
     });
 
-
     // send loop
     auto sender = std::async(std::launch::async, [&]() {
-        for(size_t i = 0; i < kTotalTransfers; ++i) {
-            auto& sendBufferData = sendData[i%kSendBuffers];
+        for (size_t i = 0; i < kTotalTransfers; ++i) {
+            auto& sendBufferData = sendData[i % kSendBuffers];
             RDMA_ASSERT_NO_THROW(connections.sender.Send(sendBufferData)) << "Iteration: " << i;
         }
     });
 }
 
-TEST_P(RdmaTest, QueueBuffer_SendOutOfOrder) {
+TEST_P(RdmaTest, QueueBuffer_SendOutOfOrder)
+{
     ConnectionPair connections;
     RDMA_ASSERT_NO_THROW(connections = GetLoopbackConnection());
     const size_t bufferSize = 1;
@@ -1543,20 +1599,21 @@ TEST_P(RdmaTest, QueueBuffer_SendOutOfOrder) {
     RDMA_ASSERT_NO_THROW(connections.receiver.ConfigureBuffers(bufferSize, 2));
 
     auto bufferRegion1 = connections.sender.GetSendRegion();
-    bufferRegion1.CopyFromVector( {1} );
+    bufferRegion1.CopyFromVector({1});
     auto bufferRegion2 = connections.sender.GetSendRegion();
-    bufferRegion2.CopyFromVector( {2} );
+    bufferRegion2.CopyFromVector({2});
 
     // Queue in reverse order we got regions
     RDMA_ASSERT_NO_THROW(connections.sender.QueueRegion(bufferRegion2));
     RDMA_ASSERT_NO_THROW(connections.sender.QueueRegion(bufferRegion1));
 
     // Data should match send order
-    RDMA_ASSERT_NO_THROW( EXPECT_EQ( std::vector<uint8_t>({2}), connections.receiver.Receive()));
-    RDMA_ASSERT_NO_THROW( EXPECT_EQ( std::vector<uint8_t>({1}), connections.receiver.Receive()));
+    RDMA_ASSERT_NO_THROW(EXPECT_EQ(std::vector<uint8_t>({2}), connections.receiver.Receive()));
+    RDMA_ASSERT_NO_THROW(EXPECT_EQ(std::vector<uint8_t>({1}), connections.receiver.Receive()));
 }
 
-TEST_P(RdmaTest, QueueBuffer_ReleaseReceiveOutOfOrder) {
+TEST_P(RdmaTest, QueueBuffer_ReleaseReceiveOutOfOrder)
+{
     ConnectionPair connections;
     RDMA_ASSERT_NO_THROW(connections = GetLoopbackConnection());
     const size_t bufferSize = 1;
@@ -1583,11 +1640,12 @@ TEST_P(RdmaTest, QueueBuffer_ReleaseReceiveOutOfOrder) {
     // Send again and expect data is still in correct order
     RDMA_ASSERT_NO_THROW(connections.sender.Send({sendSequence++}));
     RDMA_ASSERT_NO_THROW(connections.sender.Send({sendSequence++}));
-    RDMA_ASSERT_NO_THROW( EXPECT_EQ( std::vector<uint8_t>({recvSequence++}), connections.receiver.Receive()));
-    RDMA_ASSERT_NO_THROW( EXPECT_EQ( std::vector<uint8_t>({recvSequence++}), connections.receiver.Receive()));
+    RDMA_ASSERT_NO_THROW(EXPECT_EQ(std::vector<uint8_t>({recvSequence++}), connections.receiver.Receive()));
+    RDMA_ASSERT_NO_THROW(EXPECT_EQ(std::vector<uint8_t>({recvSequence++}), connections.receiver.Receive()));
 }
 
-TEST_P(RdmaTest, QueueBuffer_SendBufferTwice) {
+TEST_P(RdmaTest, QueueBuffer_SendBufferTwice)
+{
     ConnectionPair connections;
     RDMA_ASSERT_NO_THROW(connections = GetLoopbackConnection());
     const size_t bufferSize = 1;
@@ -1601,7 +1659,8 @@ TEST_P(RdmaTest, QueueBuffer_SendBufferTwice) {
     RDMA_ASSERT_THROW_WITHCODE(connections.sender.QueueRegion(bufferRegion), easyrdma_Error_InvalidOperation);
 }
 
-TEST_P(RdmaTest, QueueBuffer_ReleaseReceivedBufferTwice) {
+TEST_P(RdmaTest, QueueBuffer_ReleaseReceivedBufferTwice)
+{
     ConnectionPair connections;
     RDMA_ASSERT_NO_THROW(connections = GetLoopbackConnection());
     const size_t bufferSize = 1024;
@@ -1618,43 +1677,43 @@ TEST_P(RdmaTest, QueueBuffer_ReleaseReceivedBufferTwice) {
     RDMA_ASSERT_THROW_WITHCODE(connections.receiver.ReleaseReceivedRegion(region), easyrdma_Error_InvalidOperation);
 }
 
-
-TEST_P(RdmaTest, Scaling_Connections) {
+TEST_P(RdmaTest, Scaling_Connections)
+{
     // First make connections in parallel
     const size_t kNumConnections = 100;
     const size_t kBufferSize = 4096;
     std::vector<ConnectionPair> connections;
     std::vector<std::future<ConnectionPair>> connectionAttempts;
-    for(size_t i = 0; i < kNumConnections; ++i) {
+    for (size_t i = 0; i < kNumConnections; ++i) {
         connectionAttempts.push_back(std::async(std::launch::async, [&]() {
             return std::move(GetLoopbackConnection());
         }));
     }
-    for(size_t i = 0; i < kNumConnections; ++i) {
+    for (size_t i = 0; i < kNumConnections; ++i) {
         RDMA_ASSERT_NO_THROW(connections.push_back(std::move(connectionAttempts[i].get())));
     }
 
     // Configure in parallel
     std::vector<std::future<void>> configureFutures;
-    for(auto& connection : connections) {
+    for (auto& connection : connections) {
         configureFutures.push_back(std::async(std::launch::async, [&]() {
             connection.sender.ConfigureBuffers(kBufferSize, 10);
             connection.receiver.ConfigureBuffers(kBufferSize, 10);
         }));
     }
-    for(auto& configure : configureFutures) {
+    for (auto& configure : configureFutures) {
         RDMA_ASSERT_NO_THROW(configure.get());
     }
 
     // Send/recv
     std::vector<std::future<void>> transferFutures;
-    for(auto& connection : connections) {
+    for (auto& connection : connections) {
         transferFutures.push_back(std::async(std::launch::async, [&]() {
             std::vector<uint8_t> receiveBuffer;
-            for(size_t i = 0; i < 100; ++i) {
+            for (size_t i = 0; i < 100; ++i) {
                 std::vector<uint8_t> sendBuffer(kBufferSize);
-                for(size_t j=0; j < kBufferSize; ++j) {
-                    sendBuffer[j] = static_cast<uint8_t>(i+j);
+                for (size_t j = 0; j < kBufferSize; ++j) {
+                    sendBuffer[j] = static_cast<uint8_t>(i + j);
                 }
                 connection.sender.Send(sendBuffer);
                 receiveBuffer = connection.receiver.Receive();
@@ -1663,12 +1722,13 @@ TEST_P(RdmaTest, Scaling_Connections) {
             }
         }));
     }
-    for(auto& transfer : transferFutures) {
+    for (auto& transfer : transferFutures) {
         RDMA_ASSERT_NO_THROW(transfer.get());
     }
 }
 
-TEST_P(RdmaTest, Scaling_Buffers_LessThanCreditCount) {
+TEST_P(RdmaTest, Scaling_Buffers_LessThanCreditCount)
+{
     ConnectionPair connections;
     RDMA_ASSERT_NO_THROW(connections = GetLoopbackConnection());
     const size_t kBufferSize = 4096;
@@ -1678,23 +1738,24 @@ TEST_P(RdmaTest, Scaling_Buffers_LessThanCreditCount) {
     RDMA_ASSERT_NO_THROW(connections.receiver.ConfigureBuffers(kBufferSize, kNumBuffers));
 
     std::vector<uint8_t> sendBuffer(kBufferSize);
-    for(size_t i=0; i < kBufferSize; ++i) {
+    for (size_t i = 0; i < kBufferSize; ++i) {
         sendBuffer[i] = static_cast<uint8_t>(i);
     }
     std::vector<uint8_t> receiveBuffer;
 
-    for(size_t i = 0; i < kNumBuffers; ++i) {
+    for (size_t i = 0; i < kNumBuffers; ++i) {
         RDMA_ASSERT_NO_THROW(connections.sender.Send(sendBuffer));
     }
 
-    for(size_t i = 0; i < kNumBuffers; ++i) {
+    for (size_t i = 0; i < kNumBuffers; ++i) {
         RDMA_ASSERT_NO_THROW(receiveBuffer = connections.receiver.Receive());
         ASSERT_EQ(sendBuffer.size(), receiveBuffer.size());
         EXPECT_EQ(sendBuffer, receiveBuffer);
     }
 }
 
-TEST_P(RdmaTest, Scaling_Buffers_MoreThanCreditCount) {
+TEST_P(RdmaTest, Scaling_Buffers_MoreThanCreditCount)
+{
     // This test occasionally takes a long time to run (see #1622458)
     ConnectionPair connections;
     RDMA_ASSERT_NO_THROW(connections = GetLoopbackConnection());
@@ -1705,23 +1766,24 @@ TEST_P(RdmaTest, Scaling_Buffers_MoreThanCreditCount) {
     RDMA_ASSERT_NO_THROW(connections.receiver.ConfigureBuffers(kBufferSize, kNumBuffers));
 
     std::vector<uint8_t> sendBuffer(kBufferSize);
-    for(size_t i=0; i < kBufferSize; ++i) {
+    for (size_t i = 0; i < kBufferSize; ++i) {
         sendBuffer[i] = static_cast<uint8_t>(i);
     }
     std::vector<uint8_t> receiveBuffer;
 
-    for(size_t i = 0; i < kNumBuffers; ++i) {
+    for (size_t i = 0; i < kNumBuffers; ++i) {
         RDMA_ASSERT_NO_THROW(connections.sender.Send(sendBuffer));
     }
 
-    for(size_t i = 0; i < kNumBuffers; ++i) {
+    for (size_t i = 0; i < kNumBuffers; ++i) {
         RDMA_ASSERT_NO_THROW(receiveBuffer = connections.receiver.Receive());
         ASSERT_EQ(sendBuffer.size(), receiveBuffer.size());
         EXPECT_EQ(sendBuffer, receiveBuffer);
     }
 }
 
-TEST_P(RdmaTest, SendCallbacks_CancellationFromWaitingForCredits) {
+TEST_P(RdmaTest, SendCallbacks_CancellationFromWaitingForCredits)
+{
     const int rxOverlappedCount = 25;
     const int transferCount = 50;
     const size_t eachBufferLen = 4096;
@@ -1734,14 +1796,14 @@ TEST_P(RdmaTest, SendCallbacks_CancellationFromWaitingForCredits) {
 
     BufferCompletion completedTransfers[transferCount];
     auto sender = std::async(std::launch::async, [&]() {
-        for(int i = 0; i < transferCount; ++i) {
+        for (int i = 0; i < transferCount; ++i) {
             RDMA_ASSERT_NO_THROW(connections.sender.QueueExternalBufferWithCallback(sendBuffer.data(), sendBuffer.size(), &completedTransfers[i], nullptr, 100));
         }
     });
     RDMA_ASSERT_NO_THROW(sender.get());
 
     // Now 50 should be queued, but only 25 sent
-    for(int i = 0; i < rxOverlappedCount; ++i) {
+    for (int i = 0; i < rxOverlappedCount; ++i) {
         RDMA_ASSERT_NO_THROW(completedTransfers[i].WaitForCompletion(100));
     }
     // 25th should be queued waiting for a free buffer and not complete
@@ -1750,15 +1812,16 @@ TEST_P(RdmaTest, SendCallbacks_CancellationFromWaitingForCredits) {
     RDMA_EXPECT_NO_THROW(connections.Close());
 
     // Now all the buffers should have completed with a cancelled state
-    for(int i = rxOverlappedCount; i < transferCount; ++i) {
+    for (int i = rxOverlappedCount; i < transferCount; ++i) {
         RDMA_ASSERT_THROW_WITHCODE(completedTransfers[i].WaitForCompletion(0), easyrdma_Error_OperationCancelled);
     }
 }
 
-TEST_P(RdmaTest, SendCallbacks_CancellationFromQueued) {
+TEST_P(RdmaTest, SendCallbacks_CancellationFromQueued)
+{
     const int rxOverlappedCount = 500;
     const int transferCount = 500;
-    const size_t eachBufferLen = 1024*1024;
+    const size_t eachBufferLen = 1024 * 1024;
     std::vector<uint8_t> sendBuffer(eachBufferLen);
     ConnectionPair connections;
     RDMA_ASSERT_NO_THROW(connections = GetLoopbackConnection());
@@ -1768,7 +1831,7 @@ TEST_P(RdmaTest, SendCallbacks_CancellationFromQueued) {
 
     BufferCompletion completedTransfers[transferCount];
     auto sender = std::async(std::launch::async, [&]() {
-        for(int i = 0; i < transferCount; ++i) {
+        for (int i = 0; i < transferCount; ++i) {
             RDMA_ASSERT_NO_THROW(connections.sender.QueueExternalBufferWithCallback(sendBuffer.data(), sendBuffer.size(), &completedTransfers[i], nullptr, 100));
         }
     });
@@ -1779,15 +1842,14 @@ TEST_P(RdmaTest, SendCallbacks_CancellationFromQueued) {
     // Now all the buffers should have completed with a cancelled state
     bool sawError = false;
     int successfullCompletions = 0;
-    for(int i = 0; i < transferCount; ++i) {
+    for (int i = 0; i < transferCount; ++i) {
         try {
             completedTransfers[i].WaitForCompletion(0);
             ++successfullCompletions;
             // Once we saw an error, we should never get successful completions afterwards, since they
             // complete in-order
             ASSERT_FALSE(sawError);
-        }
-        catch(std::exception&) {
+        } catch (std::exception&) {
             sawError = true;
             RDMA_ASSERT_THROW_WITHCODE(throw, easyrdma_Error_OperationCancelled) << "At buffer: " << i;
         }
@@ -1797,10 +1859,11 @@ TEST_P(RdmaTest, SendCallbacks_CancellationFromQueued) {
     RDMA_ASSERT_NO_THROW(connections.Close());
 }
 
-TEST_P(RdmaTest, SendCallbacks_DisconnectFromQueued) {
+TEST_P(RdmaTest, SendCallbacks_DisconnectFromQueued)
+{
     const int rxOverlappedCount = 500;
     const int transferCount = 500;
-    const size_t eachBufferLen = 1024*1024;
+    const size_t eachBufferLen = 1024 * 1024;
     std::vector<uint8_t> sendBuffer(eachBufferLen);
     ConnectionPair connections;
     RDMA_ASSERT_NO_THROW(connections = GetLoopbackConnection());
@@ -1810,7 +1873,7 @@ TEST_P(RdmaTest, SendCallbacks_DisconnectFromQueued) {
 
     BufferCompletion completedTransfers[transferCount];
     auto sender = std::async(std::launch::async, [&]() {
-        for(int i = 0; i < transferCount; ++i) {
+        for (int i = 0; i < transferCount; ++i) {
             RDMA_ASSERT_NO_THROW(connections.sender.QueueExternalBufferWithCallback(sendBuffer.data(), sendBuffer.size(), &completedTransfers[i], nullptr, 100));
         }
     });
@@ -1824,15 +1887,14 @@ TEST_P(RdmaTest, SendCallbacks_DisconnectFromQueued) {
     // Now all the buffers should have completed with a cancelled state
     bool sawError = false;
     int successfullCompletions = 0;
-    for(int i = 0; i < transferCount; ++i) {
+    for (int i = 0; i < transferCount; ++i) {
         try {
             completedTransfers[i].WaitForCompletion(0);
             ++successfullCompletions;
             // Once we saw an error, we should never get successful completions afterwards, since they
             // complete in-order
             ASSERT_FALSE(sawError);
-        }
-        catch(std::exception&) {
+        } catch (std::exception&) {
             sawError = true;
             RDMA_ASSERT_THROW_WITHCODE(throw, easyrdma_Error_Disconnected) << "At buffer: " << i;
         }
@@ -1840,48 +1902,56 @@ TEST_P(RdmaTest, SendCallbacks_DisconnectFromQueued) {
     info() << "Completed " << successfullCompletions << " buffers before cancellation";
 }
 
-TEST_P(RdmaTest, RecvCallbacks_CancellationFromQueued) {
+TEST_P(RdmaTest, RecvCallbacks_CancellationFromQueued)
+{
     ConnectionPair connections;
     RDMA_ASSERT_NO_THROW(connections = GetLoopbackConnection());
 
     const int bufferCount = 20;
-    const size_t eachBufferLen = 1024*1024;
-    std::vector<uint8_t> largeRecvBuffer(bufferCount*eachBufferLen);
+    const size_t eachBufferLen = 1024 * 1024;
+    std::vector<uint8_t> largeRecvBuffer(bufferCount * eachBufferLen);
 
     RDMA_ASSERT_NO_THROW(connections.receiver.ConfigureExternalBuffer(largeRecvBuffer.data(), largeRecvBuffer.size(), bufferCount));
 
     // Queue all rx buffers at start
     BufferCompletion completedTransfers[bufferCount];
-    for(int i = 0; i < bufferCount; ++i) {
-        RDMA_ASSERT_NO_THROW(connections.receiver.QueueExternalBufferWithCallback(largeRecvBuffer.data() + (i % bufferCount)*eachBufferLen,
-                                                                                eachBufferLen, &completedTransfers[i], nullptr, 1000));
+    for (int i = 0; i < bufferCount; ++i) {
+        RDMA_ASSERT_NO_THROW(connections.receiver.QueueExternalBufferWithCallback(largeRecvBuffer.data() + (i % bufferCount) * eachBufferLen,
+            eachBufferLen,
+            &completedTransfers[i],
+            nullptr,
+            1000));
     }
 
     RDMA_ASSERT_NO_THROW(connections.receiver.Close());
 
     // Now all the buffers should have completed with a cancelled state
-    for(int i = 0; i < bufferCount; ++i) {
+    for (int i = 0; i < bufferCount; ++i) {
         RDMA_ASSERT_THROW_WITHCODE(completedTransfers[i].WaitForCompletion(0), easyrdma_Error_OperationCancelled);
     }
 
     RDMA_ASSERT_NO_THROW(connections.Close());
 }
 
-TEST_P(RdmaTest, RecvCallbacks_DisconnectFromQueued) {
+TEST_P(RdmaTest, RecvCallbacks_DisconnectFromQueued)
+{
     ConnectionPair connections;
     RDMA_ASSERT_NO_THROW(connections = GetLoopbackConnection());
 
     const int bufferCount = 20;
-    const size_t eachBufferLen = 1024*1024;
-    std::vector<uint8_t> largeRecvBuffer(bufferCount*eachBufferLen);
+    const size_t eachBufferLen = 1024 * 1024;
+    std::vector<uint8_t> largeRecvBuffer(bufferCount * eachBufferLen);
 
     RDMA_ASSERT_NO_THROW(connections.receiver.ConfigureExternalBuffer(largeRecvBuffer.data(), largeRecvBuffer.size(), bufferCount));
 
     // Queue all rx buffers at start
     BufferCompletion completedTransfers[bufferCount];
-    for(int i = 0; i < bufferCount; ++i) {
-        RDMA_ASSERT_NO_THROW(connections.receiver.QueueExternalBufferWithCallback(largeRecvBuffer.data() + (i % bufferCount)*eachBufferLen,
-                                                                                eachBufferLen, &completedTransfers[i], nullptr, 1000));
+    for (int i = 0; i < bufferCount; ++i) {
+        RDMA_ASSERT_NO_THROW(connections.receiver.QueueExternalBufferWithCallback(largeRecvBuffer.data() + (i % bufferCount) * eachBufferLen,
+            eachBufferLen,
+            &completedTransfers[i],
+            nullptr,
+            1000));
     }
 
     // Close sender and wait for receiver to notice
@@ -1890,24 +1960,25 @@ TEST_P(RdmaTest, RecvCallbacks_DisconnectFromQueued) {
     ASSERT_FALSE(connections.receiver.GetPropertyBool(easyrdma_Property_Connected));
 
     // Now all the buffers should have completed with a cancelled state
-    for(int i = 0; i < bufferCount; ++i) {
+    for (int i = 0; i < bufferCount; ++i) {
         RDMA_ASSERT_THROW_WITHCODE(completedTransfers[i].WaitForCompletion(0), easyrdma_Error_Disconnected);
     }
 
     RDMA_ASSERT_NO_THROW(connections.Close());
 }
 
-TEST_P(RdmaTest, Delayed_Destruction_Sender) {
+TEST_P(RdmaTest, Delayed_Destruction_Sender)
+{
     RDMA_ASSERT_NO_THROW(ASSERT_EQ(0U, Session::GetPropertyOnSession<uint64_t>(easyrdma_InvalidSession, easyrdma_Property_NumPendingDestructionSessions)));
     ConnectionPair connections;
     RDMA_ASSERT_NO_THROW(connections = GetLoopbackConnection());
     const size_t kNumBuffers = 10;
-    const size_t kBufferSize = 1024*1024;
+    const size_t kBufferSize = 1024 * 1024;
     RDMA_ASSERT_NO_THROW(connections.sender.ConfigureBuffers(kBufferSize, kNumBuffers));
     RDMA_ASSERT_NO_THROW(connections.receiver.ConfigureBuffers(kBufferSize, kNumBuffers));
 
     std::vector<BufferRegion> sendRegions(kNumBuffers);
-    for(size_t i = 0; i < sendRegions.size(); ++i) {
+    for (size_t i = 0; i < sendRegions.size(); ++i) {
         RDMA_ASSERT_NO_THROW(sendRegions[i] = connections.sender.GetSendRegion());
     }
     RDMA_ASSERT_NO_THROW(connections.receiver.Close(easyrdma_CloseFlags_DeferWhileUserBuffersOutstanding));
@@ -1917,32 +1988,33 @@ TEST_P(RdmaTest, Delayed_Destruction_Sender) {
     RDMA_ASSERT_NO_THROW(ASSERT_EQ(0U, Session::GetPropertyOnSession<uint64_t>(easyrdma_InvalidSession, easyrdma_Property_NumOpenedSessions)));
 
     // Attempt to access sender memory
-    for(size_t i = 0; i < sendRegions.size(); ++i) {
+    for (size_t i = 0; i < sendRegions.size(); ++i) {
         RDMA_ASSERT_NO_THROW(sendRegions[i].ToVector());
     }
 
     // Now release the buffers
-    for(size_t i = 0; i < sendRegions.size(); ++i) {
+    for (size_t i = 0; i < sendRegions.size(); ++i) {
         RDMA_ASSERT_NO_THROW(Session::ReleaseUserRegionToIdle(savedSenderHandle, sendRegions[i]));
     }
 
     RDMA_ASSERT_NO_THROW(ASSERT_EQ(0U, Session::GetPropertyOnSession<uint64_t>(easyrdma_InvalidSession, easyrdma_Property_NumPendingDestructionSessions)));
 }
 
-TEST_P(RdmaTest, Delayed_Destruction_Receiver) {
+TEST_P(RdmaTest, Delayed_Destruction_Receiver)
+{
     RDMA_ASSERT_NO_THROW(ASSERT_EQ(0U, Session::GetPropertyOnSession<uint64_t>(easyrdma_InvalidSession, easyrdma_Property_NumPendingDestructionSessions)));
     ConnectionPair connections;
     RDMA_ASSERT_NO_THROW(connections = GetLoopbackConnection());
     const size_t kNumBuffers = 10;
-    const size_t kBufferSize = 1024*1024;
+    const size_t kBufferSize = 1024 * 1024;
     RDMA_ASSERT_NO_THROW(connections.sender.ConfigureBuffers(kBufferSize, kNumBuffers));
     RDMA_ASSERT_NO_THROW(connections.receiver.ConfigureBuffers(kBufferSize, kNumBuffers));
 
-    for(size_t i = 0; i < kNumBuffers; ++i) {
+    for (size_t i = 0; i < kNumBuffers; ++i) {
         RDMA_ASSERT_NO_THROW(connections.sender.SendBlankData(kBufferSize));
     }
     std::vector<BufferRegion> recvRegions(kNumBuffers);
-    for(size_t i = 0; i < recvRegions.size(); ++i) {
+    for (size_t i = 0; i < recvRegions.size(); ++i) {
         RDMA_ASSERT_NO_THROW(recvRegions[i] = connections.receiver.GetReceivedRegion());
     }
 
@@ -1954,20 +2026,20 @@ TEST_P(RdmaTest, Delayed_Destruction_Receiver) {
     RDMA_ASSERT_NO_THROW(ASSERT_EQ(0U, Session::GetPropertyOnSession<uint64_t>(easyrdma_InvalidSession, easyrdma_Property_NumOpenedSessions)));
 
     // Attempt to access receiver memory
-    for(size_t i = 0; i < recvRegions.size(); ++i) {
+    for (size_t i = 0; i < recvRegions.size(); ++i) {
         RDMA_ASSERT_NO_THROW(recvRegions[i].ToVector());
     }
 
     // Now release the buffers
-    for(size_t i = 0; i < recvRegions.size(); ++i) {
+    for (size_t i = 0; i < recvRegions.size(); ++i) {
         RDMA_ASSERT_NO_THROW(Session::ReleaseUserRegionToIdle(savedReceiverHandle, recvRegions[i]));
     }
 
     RDMA_ASSERT_NO_THROW(ASSERT_EQ(0U, Session::GetPropertyOnSession<uint64_t>(easyrdma_InvalidSession, easyrdma_Property_NumPendingDestructionSessions)));
 }
 
-
-TEST_P(RdmaTest, PollingMode_EnableDisable) {
+TEST_P(RdmaTest, PollingMode_EnableDisable)
+{
     ConnectionPair connections;
     RDMA_ASSERT_NO_THROW(connections = GetLoopbackConnection());
 
@@ -1977,14 +2049,14 @@ TEST_P(RdmaTest, PollingMode_EnableDisable) {
     // Send side can't enable polling
     RDMA_ASSERT_THROW_WITHCODE(connections.sender.SetPropertyBool(easyrdma_Property_UseRxPolling, true), easyrdma_Error_OperationNotSupported);
 
-    // Polling on receiver only supported on Linux
-    #ifdef __linux__
-        RDMA_ASSERT_NO_THROW(connections.receiver.SetPropertyBool(easyrdma_Property_UseRxPolling, true));
-        RDMA_ASSERT_NO_THROW(ASSERT_EQ(true, connections.receiver.GetPropertyBool(easyrdma_Property_UseRxPolling)));
-    #else
-        RDMA_ASSERT_THROW_WITHCODE(connections.receiver.SetPropertyBool(easyrdma_Property_UseRxPolling, true), easyrdma_Error_OperationNotSupported);
-        RDMA_ASSERT_NO_THROW(connections.receiver.SetPropertyBool(easyrdma_Property_UseRxPolling, false));
-    #endif
+// Polling on receiver only supported on Linux
+#ifdef __linux__
+    RDMA_ASSERT_NO_THROW(connections.receiver.SetPropertyBool(easyrdma_Property_UseRxPolling, true));
+    RDMA_ASSERT_NO_THROW(ASSERT_EQ(true, connections.receiver.GetPropertyBool(easyrdma_Property_UseRxPolling)));
+#else
+    RDMA_ASSERT_THROW_WITHCODE(connections.receiver.SetPropertyBool(easyrdma_Property_UseRxPolling, true), easyrdma_Error_OperationNotSupported);
+    RDMA_ASSERT_NO_THROW(connections.receiver.SetPropertyBool(easyrdma_Property_UseRxPolling, false));
+#endif
     const size_t kNumBuffers = 10;
     const size_t kBufferSize = 1024;
     RDMA_ASSERT_NO_THROW(connections.sender.ConfigureBuffers(kBufferSize, kNumBuffers));
@@ -1995,7 +2067,8 @@ TEST_P(RdmaTest, PollingMode_EnableDisable) {
 }
 
 #ifdef __linux__
-TEST_P(RdmaTest, PollingMode_RecvAbort) {
+TEST_P(RdmaTest, PollingMode_RecvAbort)
+{
     ConnectionPair connections;
     RDMA_ASSERT_NO_THROW(connections = GetLoopbackConnection());
     const size_t bufferSize = 4096;
@@ -2007,7 +2080,7 @@ TEST_P(RdmaTest, PollingMode_RecvAbort) {
 
     auto receive = std::async(std::launch::async, [&]() {
         return connections.receiver.Receive(5000);
-    } );
+    });
     // Give time for async receive thread to start
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
@@ -2019,12 +2092,13 @@ TEST_P(RdmaTest, PollingMode_RecvAbort) {
     RDMA_ASSERT_NO_THROW(connections.receiver.Abort());
 
     RDMA_ASSERT_THROW_WITHCODE(receive.get(), easyrdma_Error_OperationCancelled);
-    auto cancelDuration = std::chrono::steady_clock::now()-cancelStart;
+    auto cancelDuration = std::chrono::steady_clock::now() - cancelStart;
     EXPECT_LE(cancelDuration, std::chrono::milliseconds(500));
 }
 
-TEST_P(RdmaTest, PollingMode_ExternalBuffers) {
-    std::vector<uint8_t> receiveBuffer(4096*1024);
+TEST_P(RdmaTest, PollingMode_ExternalBuffers)
+{
+    std::vector<uint8_t> receiveBuffer(4096 * 1024);
     ConnectionPair connections;
     RDMA_ASSERT_NO_THROW(connections = GetLoopbackConnection());
     RDMA_ASSERT_NO_THROW(connections.sender.ConfigureBuffers(1024, 10));
@@ -2035,7 +2109,8 @@ TEST_P(RdmaTest, PollingMode_ExternalBuffers) {
 }
 #endif
 
-TEST_P(RdmaTest, Close_WithUserBuffersHeld) {
+TEST_P(RdmaTest, Close_WithUserBuffersHeld)
+{
     ConnectionPair connections;
     RDMA_ASSERT_NO_THROW(connections = GetLoopbackConnection());
     const size_t bufferSize = 100;
@@ -2057,5 +2132,4 @@ TEST_P(RdmaTest, Close_WithUserBuffersHeld) {
     RDMA_ASSERT_NO_THROW(connections.receiver.Close());
 }
 
-
-}; //EasyRDMA
+}; // namespace EasyRDMA

@@ -10,18 +10,19 @@
 #include <condition_variable>
 #include "RdmaCommon.h"
 
+class RdmaListener : public RdmaListenerBase
+{
+public:
+    RdmaListener(const RdmaAddress& localAddress);
+    virtual ~RdmaListener();
 
-class RdmaListener : public RdmaListenerBase {
-    public:
-        RdmaListener(const RdmaAddress& localAddress);
-        virtual ~RdmaListener();
+    std::shared_ptr<RdmaSession> Accept(Direction direction, int32_t timeoutMs) override;
+    RdmaAddress GetLocalAddress() override;
+    RdmaAddress GetRemoteAddress() override;
+    void Cancel() override;
 
-        std::shared_ptr<RdmaSession> Accept(Direction direction, int32_t timeoutMs) override;
-        RdmaAddress GetLocalAddress() override;
-        RdmaAddress GetRemoteAddress() override;
-        void Cancel() override;
-    private:
-        rdma_cm_id* cm_id;
-        RdmaAddress localAddress;
-        bool acceptInProgress;
+private:
+    rdma_cm_id* cm_id;
+    RdmaAddress localAddress;
+    bool acceptInProgress;
 };

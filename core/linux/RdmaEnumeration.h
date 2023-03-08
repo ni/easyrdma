@@ -5,10 +5,12 @@
 #include "RdmaAddress.h"
 #include <vector>
 
-class RdmaEnumeration {
-    public:
-        struct RdmaInterface {
-            std::string address;
-        };
-        static std::vector<RdmaInterface> EnumerateInterfaces(int32_t filterAddressFamily);
+class RdmaEnumeration
+{
+public:
+    struct RdmaInterface
+    {
+        std::string address;
+    };
+    static std::vector<RdmaInterface> EnumerateInterfaces(int32_t filterAddressFamily);
 };

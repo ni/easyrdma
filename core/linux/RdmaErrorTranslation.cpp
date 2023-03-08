@@ -20,7 +20,6 @@ static const std::map<int, int32_t> errorTranslations =
     { EADDRINUSE,           easyrdma_Error_AddressInUse       },
 };
 
-
 static const std::map<ibv_wc_status, int32_t> ibvErrorTranslations =
 {
     { IBV_WC_LOC_LEN_ERR,         easyrdma_Error_InvalidSize                },
@@ -48,14 +47,14 @@ static const std::map<ibv_wc_status, int32_t> ibvErrorTranslations =
     { IBV_WC_TM_RNDV_INCOMPLETE,  easyrdma_Error_OperatingSystemError       },
 };
 
-
-int RdmaErrorTranslation::OSErrorToRdmaError(int osError) {
+int RdmaErrorTranslation::OSErrorToRdmaError(int osError)
+{
     auto it = errorTranslations.find(osError);
     return (it != errorTranslations.end()) ? it->second : easyrdma_Error_OperatingSystemError;
 }
 
-
-int RdmaErrorTranslation::IBVErrorToRdmaError(ibv_wc_status ibvError) {
+int RdmaErrorTranslation::IBVErrorToRdmaError(ibv_wc_status ibvError)
+{
     auto it = ibvErrorTranslations.find(ibvError);
     return (it != ibvErrorTranslations.end()) ? it->second : easyrdma_Error_OperatingSystemError;
 }

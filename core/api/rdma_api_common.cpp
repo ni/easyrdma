@@ -5,8 +5,8 @@
 #include "api/rdma_api_common.h"
 
 #ifdef _WIN32
-    #include <ndsupport.h>
-    #include <ndstatus.h>
+#include <ndsupport.h>
+#include <ndstatus.h>
 #endif
 
 #ifdef _WIN32
@@ -15,7 +15,7 @@ extern "C" __declspec(dllexport) BOOL WINAPI DllMain(
     DWORD fdwReason,     // reason for calling function
     LPVOID lpReserved )  // reserved
 {
-    switch( fdwReason ) {
+    switch (fdwReason) {
         case DLL_PROCESS_ATTACH:
             break;
         case DLL_THREAD_ATTACH:
@@ -29,24 +29,26 @@ extern "C" __declspec(dllexport) BOOL WINAPI DllMain(
 }
 #endif
 
-namespace EasyRDMA {
+namespace EasyRDMA
+{
 
 // Global session manager
 SessionManager sessionManager;
 
 #ifdef _WIN32
-    std::once_flag globalInitialization;
+std::once_flag globalInitialization;
 
-    void GlobalInitializeIfNeeded() {
-        std::call_once(globalInitialization, [](){
-            WSADATA wsaData;
-            ::WSAStartup(MAKEWORD(2, 2), &wsaData);
-            NdStartup();
-        });
-    }
+void GlobalInitializeIfNeeded()
+{
+    std::call_once(globalInitialization, []() {
+        WSADATA wsaData;
+        ::WSAStartup(MAKEWORD(2, 2), &wsaData);
+        NdStartup();
+    });
+}
 #else
-    void GlobalInitializeIfNeeded() { }
+void GlobalInitializeIfNeeded()
+{}
 #endif //_WIN32
 
-
-};
+}; // namespace EasyRDMA

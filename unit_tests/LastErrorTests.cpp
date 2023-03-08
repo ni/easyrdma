@@ -9,8 +9,8 @@
 #include <thread>
 #include "common/RdmaError.h"
 
-namespace EasyRDMA {
-
+namespace EasyRDMA
+{
 
 //////////////////////////////////////////////////////////////////////////////
 //
@@ -20,8 +20,8 @@ namespace EasyRDMA {
 //     Tests basic functionality of LastError functionality
 //
 //////////////////////////////////////////////////////////////////////////////
-TEST(LastError, Sanity) {
-
+TEST(LastError, Sanity)
+{
     RdmaError retrievedStatus;
     GetLastRdmaError(retrievedStatus);
     EXPECT_EQ(retrievedStatus.GetCode(), 0);
@@ -61,7 +61,8 @@ TEST(LastError, Sanity) {
 //     Tests threadlocal-specific functionality
 //
 //////////////////////////////////////////////////////////////////////////////
-TEST(LastError, Threaded) {
+TEST(LastError, Threaded)
+{
     RdmaError mainTestStatus;
     RDMA_SET_ERROR(mainTestStatus, -500);
     PopulateLastRdmaError(mainTestStatus);
@@ -83,7 +84,7 @@ TEST(LastError, Threaded) {
         EXPECT_EQ(threadRetrievedStatus.GetCode(), threadTestStatus.GetCode());
         EXPECT_STREQ(threadTestStatus.filename, threadTestStatus.filename);
 
-        EXPECT_EQ(DebugGetNumberOfAllocatedLastRdmaErrors(), startingLastErrors+1);
+        EXPECT_EQ(DebugGetNumberOfAllocatedLastRdmaErrors(), startingLastErrors + 1);
     });
     EXPECT_NO_THROW(asyncStatusSetter.join());
 
@@ -97,4 +98,4 @@ TEST(LastError, Threaded) {
     EXPECT_EQ(DebugGetNumberOfAllocatedLastRdmaErrors(), startingLastErrors);
 }
 
-};
+}; // namespace EasyRDMA

@@ -8,11 +8,12 @@
 //============================================================================
 #include "common/RdmaError.h"
 
-namespace EasyRDMA {
+namespace EasyRDMA
+{
 
 void ClearLastRdmaError();
 void PopulateLastRdmaError(const RdmaError& status);
 void GetLastRdmaError(RdmaError& status);
 int64_t DebugGetNumberOfAllocatedLastRdmaErrors();
 
-}; //EasyRDMA
+}; // namespace EasyRDMA

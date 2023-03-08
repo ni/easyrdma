@@ -13,56 +13,58 @@ using namespace EasyRDMA;
 
 #include "ThreadUtility.h"
 
-RdmaConnectedSession::RdmaConnectedSession() : RdmaConnectedSessionBase(), _closing(false) {
+RdmaConnectedSession::RdmaConnectedSession() :
+    RdmaConnectedSessionBase(), _closing(false)
+{
 }
 
-
-RdmaConnectedSession::RdmaConnectedSession(Direction _direction, IND2Adapter* _adapter, HANDLE _adapterFile, IND2Connector* _incomingConnection, const std::vector<uint8_t>& _connectionData, int32_t timeoutMs)
-    :   RdmaConnectedSessionBase(_connectionData),
-        adapterFile(_adapterFile),
-        adapter(_adapter),
-        connector(_incomingConnection),
-        _closing(false)
+RdmaConnectedSession::RdmaConnectedSession(Direction _direction, IND2Adapter* _adapter, HANDLE _adapterFile, IND2Connector* _incomingConnection, const std::vector<uint8_t>& _connectionData, int32_t timeoutMs) :
+    RdmaConnectedSessionBase(_connectionData),
+    adapterFile(_adapterFile),
+    adapter(_adapter),
+    connector(_incomingConnection),
+    _closing(false)
 {
     try {
         PreConnect(_direction);
         AcquireAndValidateConnectionData(_incomingConnection, _direction);
         OverlappedWrapper overlapped;
         HandleHROverlappedWithTimeout(_incomingConnection->Accept(
-                                qp,
-                                0,
-                                0,
-                                connectionData.data(),
-                                static_cast<ULONG>(connectionData.size()),
-                                overlapped), connector, overlapped, timeoutMs);
+                                          qp,
+                                          0,
+                                          0,
+                                          connectionData.data(),
+                                          static_cast<ULONG>(connectionData.size()),
+                                          overlapped),
+            connector,
+            overlapped,
+            timeoutMs);
         PostConnect();
-    }
-    catch(std::exception&) {
+    } catch (std::exception&) {
         Destroy();
         throw;
     }
 }
 
-
-void RdmaConnectedSession::Destroy() {
+void RdmaConnectedSession::Destroy()
+{
     _closing = true;
     try {
         if (connector.get()) {
             OverlappedWrapper overlapped;
             HandleHROverlapped(connector->Disconnect(overlapped), connector, overlapped);
         }
-    }
-    catch(std::exception&) {
+    } catch (std::exception&) {
     }
     if (connectionHandler.joinable()) {
         connectionHandler.join();
     }
     connector.reset();
-    if(qp.get()) {
+    if (qp.get()) {
         qp->Flush();
         qp.reset();
     }
-    if(cq.get()) {
+    if (cq.get()) {
         cq->CancelOverlappedRequests();
         cq.reset();
     }
@@ -75,16 +77,16 @@ void RdmaConnectedSession::Destroy() {
     }
 }
 
-
-RdmaConnectedSession::~RdmaConnectedSession() {
+RdmaConnectedSession::~RdmaConnectedSession()
+{
     Destroy();
 }
 
-
-void RdmaConnectedSession::SetupQueuePair() {
+void RdmaConnectedSession::SetupQueuePair()
+{
     assert(!cq.get() && !qp.get());
     OverlappedWrapper overlapped;
-    ND2_ADAPTER_INFO adapterInfo = { };
+    ND2_ADAPTER_INFO adapterInfo = {};
     adapterInfo.InfoVersion = ND_VERSION_2;
     ULONG adapterInfoSize = sizeof(adapterInfo);
     HandleHR(adapter->Query(&adapterInfo, &adapterInfoSize));
@@ -96,12 +98,12 @@ void RdmaConnectedSession::SetupQueuePair() {
     DWORD inlineThreshold = adapterInfo.InlineRequestThreshold;
 
     HandleHR(adapter->CreateCompletionQueue(
-                    IID_IND2CompletionQueue,
-                    adapterFile,
-                    queueDepth,
-                    0,
-                    0,
-                    cq));
+        IID_IND2CompletionQueue,
+        adapterFile,
+        queueDepth,
+        0,
+        0,
+        cq));
 
     DWORD nSge = 2; // Allow wrapping around circular buffer
     HandleHR(adapter->CreateQueuePair(
@@ -117,14 +119,14 @@ void RdmaConnectedSession::SetupQueuePair() {
         qp));
 }
 
-
-void RdmaConnectedSession::DestroyQP() {
+void RdmaConnectedSession::DestroyQP()
+{
     qp.reset();
     cq.reset();
 }
 
-
-void RdmaConnectedSession::PostConnect() {
+void RdmaConnectedSession::PostConnect()
+{
     ULONG addrSize = static_cast<ULONG>(sizeof(remoteAddress.address));
     HandleHR(connector->GetPeerAddress(reinterpret_cast<sockaddr*>(&remoteAddress.address), &addrSize));
 
@@ -135,8 +137,8 @@ void RdmaConnectedSession::PostConnect() {
     connectionHandler = CreatePriorityThread(boost::bind(&RdmaConnectedSession::ConnectionHandlerThread, this), kThreadPriority::Normal, "ConnHandler");
 }
 
-
-void RdmaConnectedSession::ConnectionHandlerThread() {
+void RdmaConnectedSession::ConnectionHandlerThread()
+{
     OverlappedWrapper overlappedLocal;
     try {
         HandleHROverlapped(connector->NotifyDisconnect(overlappedLocal), connector, overlappedLocal);
@@ -144,31 +146,29 @@ void RdmaConnectedSession::ConnectionHandlerThread() {
         // disconnect how we like first.
         HandleDisconnect();
         HandleHROverlapped(connector->Disconnect(overlappedLocal), connector, overlappedLocal);
-    }
-    catch(std::exception& ) {
+    } catch (std::exception&) {
         // No-op, silently exit
     }
 }
 
-
-void RdmaConnectedSession::EventHandlerThread() {
+void RdmaConnectedSession::EventHandlerThread()
+{
     OverlappedWrapper overlappedLocal;
     try {
-        while(!_closing && cq.get()) {
+        while (!_closing && cq.get()) {
             ND2_RESULT ndRes = {};
-            while(!_closing && cq.get() && cq->GetResults(&ndRes, 1) > 0) {
+            while (!_closing && cq.get() && cq->GetResults(&ndRes, 1) > 0) {
                 RdmaBuffer* buffer = static_cast<RdmaBuffer*>(ndRes.RequestContext);
                 RdmaError completionStatus;
-                if(ndRes.Status != ND_SUCCESS) {
+                if (ndRes.Status != ND_SUCCESS) {
                     try {
                         RDMA_THROW_WITH_SUBCODE(RdmaErrorTranslation::OSErrorToRdmaError(ndRes.Status), ndRes.Status);
-                    }
-                    catch(const RdmaException& e) {
+                    } catch (const RdmaException& e) {
                         completionStatus.Assign(e.rdmaError);
                     }
                 }
                 size_t bytesTransferred;
-                switch(ndRes.RequestType) {
+                switch (ndRes.RequestType) {
                     case Nd2RequestTypeReceive:
                         bytesTransferred = ndRes.BytesTransferred;
                         break;
@@ -182,45 +182,46 @@ void RdmaConnectedSession::EventHandlerThread() {
             }
             HandleHROverlapped(cq->Notify(ND_CQ_NOTIFY_ANY, overlappedLocal), cq, overlappedLocal);
         }
-    }
-    catch(std::exception&) {
+    } catch (std::exception&) {
         // No-op, silently exit thread. Normal errors are handled within the completion methods.
     }
 }
 
-
-RdmaAddress RdmaConnectedSession::GetLocalAddress() {
+RdmaAddress RdmaConnectedSession::GetLocalAddress()
+{
     RdmaAddress address;
     ULONG addrSize = static_cast<ULONG>(sizeof(address.address));
     HandleHR(connector->GetLocalAddress(reinterpret_cast<sockaddr*>(&address.address), &addrSize));
     return address;
 }
 
-
-RdmaAddress RdmaConnectedSession::GetRemoteAddress() {
+RdmaAddress RdmaConnectedSession::GetRemoteAddress()
+{
     return remoteAddress;
 }
 
-
-std::unique_ptr<RdmaMemoryRegion> RdmaConnectedSession::CreateMemoryRegion(void* buffer, size_t bufferSize) {
+std::unique_ptr<RdmaMemoryRegion> RdmaConnectedSession::CreateMemoryRegion(void* buffer, size_t bufferSize)
+{
     AutoRef<IND2MemoryRegion> memoryRegion;
     HandleHR(adapter->CreateMemoryRegion(
-            IID_IND2MemoryRegion,
-            adapterFile,
-            memoryRegion));
+        IID_IND2MemoryRegion,
+        adapterFile,
+        memoryRegion));
     OverlappedWrapper overlapped;
     HandleHROverlapped(memoryRegion->Register(
-        buffer,
-        bufferSize,
-        ND_MR_FLAG_ALLOW_LOCAL_WRITE,
-        overlapped), memoryRegion, overlapped);
+                           buffer,
+                           bufferSize,
+                           ND_MR_FLAG_ALLOW_LOCAL_WRITE,
+                           overlapped),
+        memoryRegion,
+        overlapped);
 
     std::unique_ptr<RdmaMemoryRegion> memoryRegionWrapper(new RdmaMemoryRegion(std::move(memoryRegion), buffer, bufferSize));
     return std::move(memoryRegionWrapper);
 }
 
-
-void RdmaConnectedSession::QueueToQp(Direction _direction, RdmaBuffer* buffer) {
+void RdmaConnectedSession::QueueToQp(Direction _direction, RdmaBuffer* buffer)
+{
     ND2_SGE sge = {};
     sge.Buffer = buffer->GetBuffer();
     sge.BufferLength = _direction == Direction::Receive ? static_cast<ULONG>(buffer->GetBufferLen())
@@ -231,8 +232,8 @@ void RdmaConnectedSession::QueueToQp(Direction _direction, RdmaBuffer* buffer) {
                                               : GetQP()->Send(buffer, &sge, 1, 0));
 }
 
-
-void RdmaConnectedSession::AcquireAndValidateConnectionData(IND2Connector* connector, Direction direction) {
+void RdmaConnectedSession::AcquireAndValidateConnectionData(IND2Connector* connector, Direction direction)
+{
     OverlappedWrapper overlapped;
     // Arbitrary size larger than the largest possible connection data buffer
     static const uint32_t kConnectionDataBufferSize = 1024;
@@ -243,7 +244,8 @@ void RdmaConnectedSession::AcquireAndValidateConnectionData(IND2Connector* conne
     ValidateConnectionData(connectionDataBuffer, direction);
 }
 
-void RdmaConnectedSession::PollForReceive(int32_t timeoutMs) {
+void RdmaConnectedSession::PollForReceive(int32_t timeoutMs)
+{
     // Shouldn't get here since it isn't allowed
     RDMA_THROW(easyrdma_Error_InternalError);
 }

@@ -6,9 +6,10 @@
 
 class RdmaError;
 
-namespace EasyRDMA {
+namespace EasyRDMA
+{
 
 std::string GetErrorDescription(const RdmaError& status);
 std::string ConvertToErrorString(int32_t errorCode);
 
-}; //EasyRDMA
+}; // namespace EasyRDMA

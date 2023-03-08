@@ -40,7 +40,8 @@ static const std::map<int32_t, std::string> errorStringTranslations =
     {easyrdma_Error_SendTooLargeForRecvBuffer, "The Send buffer is too large."},
 };
 
-namespace EasyRDMA {
+namespace EasyRDMA
+{
 
 //////////////////////////////////////////////////////////////////////////////
 //
@@ -50,8 +51,9 @@ namespace EasyRDMA {
 //      Returns elaborated error description string.
 //
 //////////////////////////////////////////////////////////////////////////////
-std::string GetErrorDescription(const RdmaError& status) {
-    if(status.IsError()) {
+std::string GetErrorDescription(const RdmaError& status)
+{
+    if (status.IsError()) {
         std::string errorDesc = ConvertToErrorString(status.GetCode());
         if (status.GetCode() == easyrdma_Error_Success) {
             return errorDesc;
@@ -65,10 +67,10 @@ std::string GetErrorDescription(const RdmaError& status) {
     return "";
 }
 
-std::string ConvertToErrorString(int32_t statusCode){
+std::string ConvertToErrorString(int32_t statusCode)
+{
     auto it = errorStringTranslations.find(statusCode);
     return (it != errorStringTranslations.end()) ? it->second : "Unknown error ";
 }
 
-}; //EasyRDMA
-
+}; // namespace EasyRDMA

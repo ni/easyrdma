@@ -9,13 +9,16 @@
 #include <sstream>
 #include <string>
 
-class TestLogger {
+class TestLogger
+{
 public:
-    typedef struct {
+    typedef struct
+    {
         std::string logs;
     } tLogData;
 
-    enum Verbosity : int16_t {
+    enum Verbosity : int16_t
+    {
         Trace = -3,
         Debug = -2,
         Info  = -1,
@@ -41,32 +44,55 @@ public:
 
     void logMessage(TestLogger::Verbosity level, const std::string& message);
 
-    class tStreamWrapper : public std::stringstream {
+    class tStreamWrapper : public std::stringstream
+    {
     public:
-        tStreamWrapper(TestLogger& parent, TestLogger::Verbosity verbosity)
-            : _parent(parent), _verbosity(verbosity) {}
-        tStreamWrapper(const tStreamWrapper& other)
-            : _parent(other._parent), _verbosity(other._verbosity) {}
-        ~tStreamWrapper() {
+        tStreamWrapper(TestLogger& parent, TestLogger::Verbosity verbosity) :
+            _parent(parent), _verbosity(verbosity) {}
+        tStreamWrapper(const tStreamWrapper& other) :
+            _parent(other._parent), _verbosity(other._verbosity) {}
+        ~tStreamWrapper()
+        {
             _parent.logMessage(_verbosity, std::stringstream::str());
         }
+
     private:
         TestLogger& _parent;
         TestLogger::Verbosity _verbosity;
     };
 
-    tStreamWrapper log(TestLogger::Verbosity level) {
+    tStreamWrapper log(TestLogger::Verbosity level)
+    {
         return tStreamWrapper(*this, level);
     }
-    inline tStreamWrapper trace() { return log(TestLogger::Verbosity::Trace); }
-    inline tStreamWrapper debug() { return log(TestLogger::Verbosity::Debug); }
-    inline tStreamWrapper info() { return log(TestLogger::Verbosity::Info); }
-    inline tStreamWrapper warn() { return log(TestLogger::Verbosity::Warn); }
-    inline tStreamWrapper error() { return log(TestLogger::Verbosity::Error); }
-    inline tStreamWrapper fatal() { return log(TestLogger::Verbosity::Fatal); }
+    inline tStreamWrapper trace()
+    {
+        return log(TestLogger::Verbosity::Trace);
+    }
+    inline tStreamWrapper debug()
+    {
+        return log(TestLogger::Verbosity::Debug);
+    }
+    inline tStreamWrapper info()
+    {
+        return log(TestLogger::Verbosity::Info);
+    }
+    inline tStreamWrapper warn()
+    {
+        return log(TestLogger::Verbosity::Warn);
+    }
+    inline tStreamWrapper error()
+    {
+        return log(TestLogger::Verbosity::Error);
+    }
+    inline tStreamWrapper fatal()
+    {
+        return log(TestLogger::Verbosity::Fatal);
+    }
 
 private:
-    enum LogDestination : uint32_t {
+    enum LogDestination : uint32_t
+    {
         Global,
         Test
     };
@@ -80,4 +106,3 @@ private:
     std::stringstream _globalLogDestination;
     std::stringstream _testLogDestination;
 };
-

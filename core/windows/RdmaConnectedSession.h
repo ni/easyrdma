@@ -12,52 +12,59 @@ class RdmaBufferQueue;
 class RdmaBuffer;
 class RdmaMemoryRegion;
 
-class RdmaConnectedSession : public RdmaConnectedSessionBase {
-    public:
-        RdmaConnectedSession();
-        RdmaConnectedSession(Direction _direction, IND2Adapter* _adapter, HANDLE _adapterFile, IND2Connector* _incomingConnection, const std::vector<uint8_t>& _connectionData, int32_t timeoutMs);
+class RdmaConnectedSession : public RdmaConnectedSessionBase
+{
+public:
+    RdmaConnectedSession();
+    RdmaConnectedSession(Direction _direction, IND2Adapter* _adapter, HANDLE _adapterFile, IND2Connector* _incomingConnection, const std::vector<uint8_t>& _connectionData, int32_t timeoutMs);
 
-        virtual ~RdmaConnectedSession();
-        RdmaAddress GetLocalAddress() override;
-        RdmaAddress GetRemoteAddress() override;
+    virtual ~RdmaConnectedSession();
+    RdmaAddress GetLocalAddress() override;
+    RdmaAddress GetRemoteAddress() override;
 
-        virtual std::unique_ptr<RdmaMemoryRegion> CreateMemoryRegion(void* buffer, size_t bufferSize);
-        virtual void QueueToQp(Direction _direction, RdmaBuffer* buffer);
-        void PollForReceive(int32_t timeoutMs) override;
-    protected:
-        enum class BufferOwnership {
-            Unknown,
-            Internal,
-            External
-        };
-        enum class BufferType {
-            Unknown,
-            Single,
-            Multiple
-        };
+    virtual std::unique_ptr<RdmaMemoryRegion> CreateMemoryRegion(void* buffer, size_t bufferSize);
+    virtual void QueueToQp(Direction _direction, RdmaBuffer* buffer);
+    void PollForReceive(int32_t timeoutMs) override;
 
-        void SetupQueuePair() override;
-        void DestroyQP() override;
-        void ConnectionHandlerThread();
-        void Destroy();
+protected:
+    enum class BufferOwnership
+    {
+        Unknown,
+        Internal,
+        External
+    };
+    enum class BufferType
+    {
+        Unknown,
+        Single,
+        Multiple
+    };
 
-        virtual void PostConnect() override;
+    void SetupQueuePair() override;
+    void DestroyQP() override;
+    void ConnectionHandlerThread();
+    void Destroy();
 
-        void EventHandlerThread();
+    virtual void PostConnect() override;
 
-        void AcquireAndValidateConnectionData(IND2Connector* connector, Direction direction);
+    void EventHandlerThread();
 
-        IND2QueuePair* GetQP() const { return qp.get(); }
+    void AcquireAndValidateConnectionData(IND2Connector* connector, Direction direction);
 
-        boost::thread eventHandler;
+    IND2QueuePair* GetQP() const
+    {
+        return qp.get();
+    }
 
-        AutoRef<IND2Adapter> adapter;
-        HANDLE adapterFile = nullptr;
+    boost::thread eventHandler;
 
-        AutoRef<IND2Connector> connector;
-        AutoRef<IND2CompletionQueue> cq;
-        AutoRef<IND2QueuePair> qp;
-        boost::thread connectionHandler;
-        bool _closing;
-        RdmaAddress remoteAddress;
+    AutoRef<IND2Adapter> adapter;
+    HANDLE adapterFile = nullptr;
+
+    AutoRef<IND2Connector> connector;
+    AutoRef<IND2CompletionQueue> cq;
+    AutoRef<IND2QueuePair> qp;
+    boost::thread connectionHandler;
+    bool _closing;
+    RdmaAddress remoteAddress;
 };

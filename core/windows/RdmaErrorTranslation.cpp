@@ -38,7 +38,8 @@ static const std::map<int, int32_t> errorTranslations =
     { (int)(0xC00000CC),            easyrdma_Error_InvalidAddress     }, // STATUS_BAD_NETWORK_NAME from DDK
 };
 
-int RdmaErrorTranslation::OSErrorToRdmaError(int osError) {
+int RdmaErrorTranslation::OSErrorToRdmaError(int osError)
+{
     auto it = errorTranslations.find(osError);
     return (it != errorTranslations.end()) ? it->second : easyrdma_Error_OperatingSystemError;
 }
