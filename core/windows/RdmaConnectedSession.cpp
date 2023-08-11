@@ -52,7 +52,9 @@ void RdmaConnectedSession::Destroy()
     try {
         if (connector.get()) {
             OverlappedWrapper overlapped;
-            HandleHROverlapped(connector->Disconnect(overlapped), connector, overlapped);
+            // For some reason, EventHandler in Windows waits until RDMA Close is called from Linux's connector session
+            // before it exits. Adding a timeout to allow the thread to exit earlier.
+            HandleHROverlappedWithTimeout(connector->Disconnect(overlapped), connector, overlapped, 100);
         }
     } catch (std::exception&) {
     }
