@@ -4,6 +4,7 @@
 #pragma once
 #include <memory>
 #include <functional>
+#include <cstring>
 #include <string>
 #include <iostream>
 #include <regex>
